@@ -1,0 +1,66 @@
+name: Docs
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: docs-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pages: read
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.13"
+      - uses: astral-sh/setup-uv@v8.1.0
+        with:
+          enable-cache: true
+      - name: Install documentation tools
+        run: |
+          uv venv .venv-docs --python 3.13
+          uv pip install --python .venv-docs/bin/python -r docs/requirements-quarto.txt
+      - uses: quarto-dev/quarto-actions/setup@v2
+        with:
+          version: "1.9.37"
+      - name: Generate API and render site
+        run: make docs-build
+      - name: Configure Pages
+        if: >-
+          github.repository == 'ysBach/ndfiltrs' &&
+          github.ref == 'refs/heads/main' &&
+          github.event_name != 'pull_request'
+        uses: actions/configure-pages@v6
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v4
+        with:
+          path: docs/quarto/_site
+
+  deploy:
+    if: >-
+      github.repository == 'ysBach/ndfiltrs' &&
+      github.ref == 'refs/heads/main' &&
+      github.event_name != 'pull_request'
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v5

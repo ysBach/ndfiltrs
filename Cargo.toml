@@ -1,0 +1,42 @@
+[package]
+name = "ndfiltrs"
+version = "0.1.0"
+edition = "2021"
+rust-version = "1.84"
+description = "Fast NaN-aware N-dimensional filters for NumPy, implemented in Rust"
+license = "MIT"
+readme = "README.md"
+repository = "https://github.com/ysBach/ndfiltrs"
+homepage = "https://github.com/ysBach/ndfiltrs"
+# Python wheels contain the Rust implementation; no public Rust API yet.
+publish = false
+
+[lib]
+name = "ndfiltrs"
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+rayon = "1.10"
+reducers = { version = "=0.4.0", default-features = false }
+pyo3 = { version = "0.28", features = ["abi3-py310"], optional = true }
+numpy = { version = "0.28", optional = true }
+
+[features]
+default = []
+python = ["dep:pyo3", "dep:numpy"]
+extension-module = ["python", "pyo3/extension-module"]
+test-hooks = ["extension-module"]
+benchmark = []
+
+[dev-dependencies]
+criterion = "0.7"
+
+[[bench]]
+name = "filter2d_candidate"
+harness = false
+required-features = ["benchmark"]
+
+[profile.release]
+opt-level = 3
+lto = "thin"
+codegen-units = 1

@@ -1,0 +1,141 @@
+project:
+  type: website
+  output-dir: _site
+  render:
+    - "*.qmd"
+    - "guides/*.qmd"
+    - "api/*.qmd"
+  resources:
+    - assets/
+
+metadata-files:
+  - api/_sidebar.yml
+
+website:
+  title: ndfiltrs
+  description: Rust-backed N-dimensional filtering for NumPy arrays with explicit numerical policies.
+  site-url: https://ysbach.github.io/ndfiltrs/
+  repo-url: https://github.com/ysBach/ndfiltrs
+  search: true
+  page-navigation: true
+  navbar:
+    left:
+      - href: index.qmd
+        text: Home
+      - href: quickstart.qmd
+        text: Start here
+      - text: Guides
+        menu:
+          - href: guides/semantics.qmd
+            text: Neighborhood statistics
+          - href: guides/benchmarks.qmd
+            text: Benchmark evidence
+          - href: guides/index.qmd
+            text: More filtering guides
+      - href: api/index.qmd
+        text: API reference
+      - href: contributing.qmd
+        text: Contributor guide
+    right:
+      - icon: github
+        href: https://github.com/ysBach/ndfiltrs
+        aria-label: GitHub repository
+
+format:
+  html:
+    theme: cosmo
+    toc: true
+    code-copy: true
+    code-fold: false
+    css: styles.css
+
+execute:
+  enabled: false
+
+quartodoc:
+  package: ndfiltrs
+  source_dir: ../../python
+  parser: numpy
+  dynamic: false
+  rewrite_all_pages: true
+  dir: api
+  sidebar: api/_sidebar.yml
+  sections:
+    - title: Neighborhood statistics
+      desc: Rectangular size or any footprint window; preserve the input shape and floating dtype.
+      contents:
+        - median_filter
+        - nanmedian_filter
+        - mean_filter
+        - nanmean_filter
+        - min_filter
+        - nanmin_filter
+        - max_filter
+        - nanmax_filter
+        - var_filter
+        - nanvar_filter
+        - std_filter
+        - nanstd_filter
+        - rank_filter
+    - title: Robust neighborhood statistics
+      desc: Percentiles, MAD, sigma clipping, mode estimates, and biweight statistics.
+      contents:
+        - percentile_filter
+        - nanpercentile_filter
+        - mad_filter
+        - nanmad_filter
+        - sigma_clipped_filter
+        - mode_filter
+        - nanmode_filter
+        - biweight_location_filter
+        - nanbiweight_location_filter
+        - biweight_scale_filter
+        - nanbiweight_scale_filter
+    - title: Convolution and correlation
+      desc: Raw weighted sums or normalized smoothing after omitting missing samples.
+      contents:
+        - convolve
+        - correlate
+        - nanconvolve
+        - nancorrelate
+    - title: Gaussian filters
+      desc: Smoothing and derivatives with explicitly controlled support.
+      contents:
+        - gaussian_filter
+        - nangaussian_filter
+        - gaussian_laplace
+        - gaussian_gradient_magnitude
+    - title: Kernels
+      desc: N-D weights for convolution and footprints for window filters.
+      contents:
+        - kernels.box
+        - kernels.tophat
+        - kernels.ring
+        - kernels.gaussian
+        - kernels.moffat
+        - kernels.student_t
+        - kernels.sample
+    - title: Derivatives and morphology
+      desc: Discrete edge operators and grey morphology with flat structuring elements.
+      contents:
+        - sobel
+        - prewitt
+        - laplace
+        - grey_dilation
+        - grey_opening
+        - grey_closing
+        - white_tophat
+        - black_tophat
+        - morphological_gradient
+        - morphological_laplace
+    - title: Masked-pixel repair
+      desc: Replace only masked pixels; keep unmasked samples unchanged.
+      contents:
+        - fixpix
+    - title: Parallel execution
+      contents:
+        - get_num_threads
+  renderer:
+    style: markdown
+    display_name: short
+    table_style: description-list
