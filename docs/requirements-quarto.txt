@@ -1,0 +1,3 @@
+# Static API generation; keep this pair aligned across the package sites.
+quartodoc==0.11.1
+griffe==0.49.0

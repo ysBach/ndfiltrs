@@ -1,0 +1,12 @@
+/* Keep signatures and tables usable on narrow screens. */
+pre {
+  overflow-x: auto;
+}
+
+.callout p:last-child {
+  margin-bottom: 0;
+}
+
+.doc-section dt {
+  margin-top: 0.8rem;
+}

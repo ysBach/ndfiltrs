@@ -1,0 +1,79 @@
+---
+title: "Build and publish documentation"
+---
+
+Edit QMD pages and Python docstrings, then push to `main`. After the one-time
+Pages setup, GitHub Actions builds and publishes the site automatically.
+Pull requests build the same site for validation without deploying it.
+
+## 1. Enable GitHub Pages once
+
+In `ysBach/ndfiltrs`, open **Settings → Pages → Build and deployment** and
+select **GitHub Actions** as the source. The `github-pages` environment must
+allow deployments from `main`; add reviewers only if you want manual approval
+on each deployment.
+
+The published URL is <https://ysbach.github.io/ndfiltrs/>. Pushes to `main`
+and manual runs from `main` deploy only in the canonical repository. Forks
+and pull requests build without publishing.
+
+## 2. Install the documentation tools
+
+Install [Quarto 1.9.37](https://quarto.org/docs/download/) and `uv`, then run
+from the repository root:
+
+```bash
+uv venv .venv-docs --python 3.13
+uv pip install --python .venv-docs/bin/python -r docs/requirements-quarto.txt
+```
+
+This dedicated environment contains only the static documentation tools.
+These commands do not synchronize or modify the shared scientific environment.
+
+## 3. Edit the maintained sources
+
+Edit the source Markdown guides and Python docstrings. The build adds short
+introductions to generated website copies without modifying the source guides.
+
+| Content | Edit |
+| --- | --- |
+| Landing page, quickstart, or this guide | `docs/quarto/*.qmd` |
+| Filtering, convolution, repair, or benchmark guide | Existing `docs/*.md` |
+| Function signature or reference details | Python source in `python/ndfiltrs/` |
+| Navigation and API groups | `docs/quarto/_quarto.yml` |
+
+The build stages the existing Markdown guides into QMD and rewrites their
+relative links. The maintained `docs/quarto/guides/index.qmd` is committed;
+the other guide QMD files and `docs/quarto/api/` pages are generated and
+ignored by Git. Edit the canonical Markdown to change a generated guide.
+
+## 4. Build or preview locally
+
+```bash
+make docs-build
+make docs-preview
+```
+
+`docs-build` regenerates the guides and API before rendering the whole site
+to `docs/quarto/_site/`. `docs-preview` also regenerates those pages before
+starting Quarto preview. If you change a source docstring or a canonical
+`docs/*.md` guide while preview is open, run `make docs-api` in another terminal.
+Use `DOCS_PYTHON=/absolute/path/to/python` to select an existing documentation
+environment explicitly.
+
+Static API generation reads source signatures and docstrings without importing
+`ndfiltrs`, so the documentation build does not need a compiled native extension.
+
+Plain Python snippets are not executed by Quarto. When editing an example,
+run it locally against the matching built extension, including its assertions.
+Native package behavior remains covered by the package test workflow.
+
+## 5. Publish and inspect the result
+
+Commit the maintained sources, push to `main`, and inspect the **Docs**
+workflow. Its build artifact is the rendered site; a successful deployment
+updates the Pages URL. No registry release or PyPI upload is required.
+
+The site describes `main`, not necessarily the latest published version.
+The workflow deploys only after the documentation build succeeds. An earlier
+site remains online if a later build fails.

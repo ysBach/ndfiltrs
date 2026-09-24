@@ -1,0 +1,5 @@
+# Keep scripts portable and checksummed notices byte-identical on Windows.
+* text=auto eol=lf
+python/ndfiltrs/licenses/*.txt -text
+tests/data/**/*.npz -text
+docs/images/*.png -text

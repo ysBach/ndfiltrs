@@ -1,0 +1,100 @@
+name: CI
+
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+  workflow_call:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+        python-version: ["3.10", "3.13"]
+    runs-on: ${{ matrix.os }}
+    defaults:
+      run:
+        working-directory: ndfiltrs
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          path: ndfiltrs
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: "1.84"
+          components: rustfmt, clippy
+      - uses: astral-sh/setup-uv@v6
+      - run: uv sync --frozen --extra dev
+      - name: Install optional Astropy reference on one test job
+        if: matrix.os == 'ubuntu-latest' && matrix.python-version == '3.13'
+        run: uv pip install --python .venv/bin/python astropy
+      - run: cargo fetch --locked
+      - run: uv run --frozen python scripts/update_rust_notices.py --check
+      - run: >-
+          uv run --frozen maturin develop --release --locked
+          --features test-hooks
+      - run: >-
+          uv run --frozen python -c
+          'from ndfiltrs import _core; required = ("_DetachProbe", "_test_median_filter_after_snapshot", "_test_median_filter_during_detach", "_test_fixpix_after_snapshot", "_test_fixpix_during_detach"); missing = [name for name in required if not hasattr(_core, name)]; __import__("sys").exit("missing test-hooks: " + repr(missing)) if missing else None'
+      - run: uv run --frozen pytest -q
+      - run: uv run --frozen ruff format --check .
+      - run: uv run --frozen ruff check .
+      - run: cargo fmt --all -- --check
+      - run: cargo test --locked --no-default-features
+      - run: cargo test --locked --features benchmark
+      - run: cargo clippy --locked --features test-hooks -- -D warnings
+
+  artifacts:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ndfiltrs
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          path: ndfiltrs
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.10"
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: "1.84"
+      - uses: astral-sh/setup-uv@v6
+      - run: uv sync --frozen --extra dev
+      - run: cargo package --locked
+      - run: uv run --frozen maturin sdist --out dist
+      - run: git diff --exit-code -- Cargo.lock uv.lock
+      - run: uv run --frozen maturin build --release --locked --out dist
+      - run: >-
+          uv run --frozen python scripts/verify_artifact_licenses.py
+          --license LICENSE
+          --notices python/ndfiltrs/licenses
+          --crate target/package
+          --sdist dist
+          --wheel dist
+      - run: uv venv --no-project "$RUNNER_TEMP/ndfiltrs-sdist-smoke"
+      - run: >-
+          uv pip install
+          --python "$RUNNER_TEMP/ndfiltrs-sdist-smoke/bin/python"
+          dist/*.tar.gz
+      - run: >-
+          "$RUNNER_TEMP/ndfiltrs-sdist-smoke/bin/python"
+          -I scripts/smoke_install.py
+      - uses: actions/upload-artifact@v4
+        with:
+          name: package-artifacts
+          path: |
+            ndfiltrs/target/package/*.crate
+            ndfiltrs/dist/*
+      - uses: actions/upload-artifact@v4
+        with:
+          name: release-sdist
+          path: ndfiltrs/dist/*.tar.gz
+          if-no-files-found: error

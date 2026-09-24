@@ -1,0 +1,92 @@
+# Changelog
+
+## 0.1.0 - Unreleased
+
+First release of `ndfiltrs`: fast N-dimensional neighborhood filters for
+NumPy, implemented in Rust.
+
+### Performance
+
+- Added `method="sortnet"` to median filters and `method="boxcar"` to mean filters.
+  Previously every median used per-window selection and every boxcar rescanned
+  its window or axis support; the new methods vectorize exact selection or reuse
+  exact removable sums. For example, `nanmean_filter(x, 63, method="boxcar")`
+  omits NaNs without allowing them to contaminate later windows. Boxcar means
+  round once to the output dtype and may differ in the last bits from direct
+  compensated sums. Public defaults are unchanged; slower cases remain in
+  the published benchmarks.
+- `mean_filter` and `nanmean_filter` previously buffered every window before
+  averaging; now they accumulate during traversal and buffer only for overflow
+  recovery, preserving summation order and nonfinite-value rules.
+- Weighted filters previously remapped every tap and buffered every finite
+  pair; interior pixels now use precomputed offsets and streaming accumulation.
+  Separable mean/Gaussian passes share the same compensated accumulator.
+- `nanmin_filter(..., min_count=1)` and `nanmax_filter(..., min_count=1)`
+  previously maintained redundant count arrays; empty-neighborhood state now
+  supplies that information. Larger `min_count` values still track exact counts.
+- Before/after benchmarks now require bitwise agreement with the prior wheel.
+  Astro-SCRAPPY comparisons separate exact medians from its row/column
+  approximation and disclose different border handling. See
+  [timings and remaining limits](docs/benchmarks.md).
+
+### Common behavior
+
+- Every filter accepts N-D `float32` and `float64` arrays and the
+  SciPy-style boundary modes `reflect`, `constant`, `nearest`, `mirror`,
+  and `wrap`.
+- Window filters take a rectangular `size` or any `footprint` (disk, ring,
+  cross, ...), shifted by `origin`, with SciPy's window geometry.
+- `nan*` variants skip NaN samples and return NaN where fewer than
+  `min_count` samples remain.
+- Work runs in parallel Rust threads with the GIL released. Median, min/max,
+  mean, var, and std results are bitwise identical for any thread count.
+
+### Filters
+
+- Rank: `median_filter`, `percentile_filter`, `min_filter`, `max_filter`,
+  and their `nan*` variants, plus `rank_filter`. Example: the 25th percentile
+  of `[1, 3, 9, 11]` is `2.5`.
+  Rectangular min/max use sliding extrema rather than visiting every window element.
+- Moments: `mean_filter`, `var_filter`, `std_filter` (with `ddof`), and
+  their `nan*` variants. `mean_filter(method="separable")` averages one axis at a
+  time for large boxcar windows.
+- Robust: `mad_filter` and `nanmad_filter` (scaled median absolute
+  deviation), and `sigma_clipped_filter` (iterative outlier rejection).
+  Example: with `spread="mad"`, clipping `[1, 2, 100]` gives mean `1.5`.
+- Mode and biweight: `mode_filter` and `nanmode_filter` (SExtractor, MMM, or
+  IRAF rule, with an adjustable `pearson` factor), `sigma_clipped_filter(maxiters=None, statistic="mode")` for a SExtractor-like
+  background, and biweight location and scale filters matching `astropy.stats`.
+- Weighted: `convolve` and `correlate` with any N-D kernel and `origin`
+  shift. `nanconvolve` and `nancorrelate` divide by the weights of the
+  samples that remain.
+- Gaussian: `gaussian_filter` (smoothing and derivatives, optional
+  `method="separable"`), `nangaussian_filter`, `gaussian_laplace`, and
+  `gaussian_gradient_magnitude`. Use `axes=(-2, -1)` to filter each plane
+  of a cube separately.
+- Kernels: `ndfiltrs.kernels` builds N-D `box`, `tophat`, `ring`, `gaussian`,
+  `moffat`, and `student_t` weights, with optional rotation and subpixel
+  oversampling; `kernels.sample` samples any function or Astropy model.
+  Astropy kernel objects also work directly as weights.
+- Edges and morphology: `sobel`, `prewitt`, and `laplace`; grey dilation,
+  opening, closing, white and black top-hats, and morphological gradient and
+  Laplace, all matching SciPy. Erosion is `min_filter`.
+
+### Pixel repair
+
+- `fixpix` fills masked pixels in N-D images. The default linear method
+  matches `astroimred.fixpix`; `method="median"` uses the median of unmasked
+  neighbors (any `footprint`); `method="mean"` uses their mean, optionally
+  weighted by a `kernel` (passing `kernel` alone selects it), like Astropy's
+  `interpolate_replace_nans`.
+  Median and mean repair evaluate only masked pixels, in parallel.
+
+### Packaging
+
+- Reproducible, parity-checked SciPy/NumPy benchmarks report raw timings and
+  operation-specific speedups or slowdowns.
+- Independent numerical references cover boundary geometry, nonfinite samples,
+  precision, and input preservation. CI also compares sampled kernels with Astropy.
+- MIT license. Bundled license notices cover the Rust dependencies and
+  `astroimred`.
+- `cp310-abi3` wheels for Python 3.10+ on Linux (x86-64, ARM64; glibc 2.28+),
+  macOS (x86-64, ARM64), and Windows (x86-64). Requires NumPy 1.24+.

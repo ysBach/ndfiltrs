@@ -1,0 +1,267 @@
+{
+  "schema_version": 1,
+  "scene_id": "ndfiltrs-gold-v1",
+  "shape": [
+    256,
+    320
+  ],
+  "coordinates": "zero-based array[y, x], y increases downward; model sampled at integer pixel centers",
+  "units": "arbitrary signal units; synthetic Gaussian noise, not a calibrated detector simulation",
+  "model": {
+    "background": "100 + 0.03*x + 0.02*y",
+    "stars": [
+      {
+        "y": 48.25,
+        "x": 56.75,
+        "amplitude": 220.0,
+        "sigma_pixels": 1.4
+      },
+      {
+        "y": 81.5,
+        "x": 139.25,
+        "amplitude": 120.0,
+        "sigma_pixels": 2.2
+      },
+      {
+        "y": 153.25,
+        "x": 75.5,
+        "amplitude": 300.0,
+        "sigma_pixels": 1.7
+      },
+      {
+        "y": 194.5,
+        "x": 243.25,
+        "amplitude": 160.0,
+        "sigma_pixels": 3.0
+      },
+      {
+        "y": 4.25,
+        "x": 208.75,
+        "amplitude": 180.0,
+        "sigma_pixels": 1.5
+      },
+      {
+        "y": 229.0,
+        "x": 314.5,
+        "amplitude": 90.0,
+        "sigma_pixels": 2.0
+      }
+    ],
+    "extended": "35*exp(-0.5*(((x-230)/22)**2 + ((y-108)/12)**2))",
+    "step": "18*(x >= 160)",
+    "texture": "2.5*sin(2*pi*x/19)*cos(2*pi*y/31)",
+    "noise_sigma": "sqrt(model/4 + 2**2)"
+  },
+  "rng": {
+    "algorithm": "PCG64",
+    "noise_seed": 20260906,
+    "mask_seed": 20260907
+  },
+  "defect_kinds": {
+    "0": "valid",
+    "1": "clean + 500",
+    "2": "-100",
+    "3": "NaN",
+    "4": "+inf",
+    "5": "-inf"
+  },
+  "cases": {
+    "sparse": {
+      "count": 81,
+      "fraction": 0.00098876953125,
+      "fixed_yx": [
+        [
+          0,
+          0
+        ],
+        [
+          255,
+          319
+        ],
+        [
+          0,
+          100
+        ],
+        [
+          130,
+          0
+        ],
+        [
+          120,
+          159
+        ],
+        [
+          120,
+          160
+        ],
+        [
+          48,
+          57
+        ],
+        [
+          82,
+          139
+        ],
+        [
+          153,
+          76
+        ],
+        [
+          194,
+          243
+        ],
+        [
+          4,
+          209
+        ],
+        [
+          229,
+          314
+        ]
+      ]
+    },
+    "stress": {
+      "count": 618,
+      "fraction": 0.0075439453125,
+      "regions": [
+        "full column x=34",
+        "row y=176,x=180:255",
+        "block y=175:184,x=40:49",
+        "cross y=90:127,x=93 and y=109,x=76:112",
+        "edge y=0:4,x=260:267",
+        "edge y=199:204,x=315:320"
+      ]
+    }
+  },
+  "controls": {
+    "flat": "16 everywhere",
+    "ramp": "16 + 2*x + 4*y",
+    "mask": "only [y=4,x=5]; exact interior reconstruction for linear and median size=3"
+  },
+  "truth": {
+    "model": "noiseless signal",
+    "clean": "uncorrupted noisy realization; not an exact expected repair output"
+  },
+  "arrays": {
+    "background": {
+      "shape": [
+        256,
+        320
+      ],
+      "dtype": "<f8",
+      "sha256": "7b652efd8ff5184775bba8232aa364033f17225f3cc70ee61b67fad372a235cb"
+    },
+    "clean": {
+      "shape": [
+        256,
+        320
+      ],
+      "dtype": "<f8",
+      "sha256": "12486284d5579520e87b74ca6150afc4d319a965e248088faacad9edf9e9c643"
+    },
+    "control_flat": {
+      "shape": [
+        9,
+        11
+      ],
+      "dtype": "<f8",
+      "sha256": "b24a91c38b1f109a34733bb87ff29361b547619ca1faa7d8c1442fcc97f0b940"
+    },
+    "control_mask": {
+      "shape": [
+        9,
+        11
+      ],
+      "dtype": "|b1",
+      "sha256": "f9c54bb464d49728770aaf12f701dc9078ced7c635940a7314cf9aca2b1c268b"
+    },
+    "control_ramp": {
+      "shape": [
+        9,
+        11
+      ],
+      "dtype": "<f8",
+      "sha256": "3b8fb867afbb02b7d7c0f61b26fe5a15de79cd73e8157e41a1f04d884c6b6a4a"
+    },
+    "defect_kind_sparse": {
+      "shape": [
+        256,
+        320
+      ],
+      "dtype": "|u1",
+      "sha256": "4a5f83001b990afcb3af89b743693d6ed7656ae94b45a66da9e1f58b72e9a6af"
+    },
+    "defect_kind_stress": {
+      "shape": [
+        256,
+        320
+      ],
+      "dtype": "|u1",
+      "sha256": "3c52cdb9c73c83f0909e05172318a2bf3152582465e6c5ee6b5637f2559d9162"
+    },
+    "mask_sparse": {
+      "shape": [
+        256,
+        320
+      ],
+      "dtype": "|b1",
+      "sha256": "e26d2af8a21963d1e485bbb65145b898d426b54a917eb0e30468ccd014da8ef9"
+    },
+    "mask_stress": {
+      "shape": [
+        256,
+        320
+      ],
+      "dtype": "|b1",
+      "sha256": "7bce437da178f3932379c0175856beb978a6064c5b453822883fd75c8163ec16"
+    },
+    "model": {
+      "shape": [
+        256,
+        320
+      ],
+      "dtype": "<f8",
+      "sha256": "66f7919198e3eab8573b861e6570347b0724279adf9c89d78d34500c8b610701"
+    },
+    "noise": {
+      "shape": [
+        256,
+        320
+      ],
+      "dtype": "<f8",
+      "sha256": "687e9e0b9ef00f83ef91f7f12d0493891996f1d1494f9b566be74511996b820a"
+    },
+    "noise_sigma": {
+      "shape": [
+        256,
+        320
+      ],
+      "dtype": "<f8",
+      "sha256": "e664d1bec9c73b29a4ac566f003091da5dbfb37e339432637015c074e78262fe"
+    },
+    "observed_sparse": {
+      "shape": [
+        256,
+        320
+      ],
+      "dtype": "<f8",
+      "sha256": "2a10418fd8751d8343b5c6deaf0aa0376617fc07cb8194a37870d8092927eab6"
+    },
+    "observed_stress": {
+      "shape": [
+        256,
+        320
+      ],
+      "dtype": "<f8",
+      "sha256": "c91694b58c2d3c0e387598da8df73ef3b0789d461bc0ee3417701b1842328683"
+    }
+  },
+  "archive_sha256": "66dc05d6c17652f5fc80b316343a716615c408f8c48494eeab29f50d1574984a",
+  "generation": {
+    "numpy": "2.5.2",
+    "python": "3.13.11",
+    "platform": "macOS-26.6-arm64-arm-64bit-Mach-O",
+    "machine": "arm64",
+    "generator_sha256": "dbe4f5beef1ead276af5a1bb011de7bed8340e529cfb3258dd27cc1ae458dada"
+  }
+}

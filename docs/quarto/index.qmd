@@ -1,0 +1,52 @@
+---
+title: "Filter arrays with explicit numerical policies"
+---
+
+`ndfiltrs` provides Rust-backed neighborhood statistics, convolution,
+Gaussian filters, and masked-pixel repair for NumPy arrays.
+
+**Start with the [quickstart](quickstart.qmd).** It takes four short steps
+from installation to a first result. Use the [guide overview](guides/index.qmd)
+to choose a task, then the [API reference](api/index.qmd) for exact signatures.
+
+## Choose a path
+
+| Your task | Read next | What changes |
+| --- | --- |
+| Estimate a local median, mean, range, or scatter | [Neighborhood statistics](guides/semantics.qmd) | Every output position receives a neighborhood statistic. |
+| Check measured cost and limits | [Benchmark evidence](guides/benchmarks.qmd) | Recorded measurements show cost and scope. |
+
+For weighted kernels, Gaussian smoothing, or masked-pixel repair, continue
+with the [additional filtering guides](guides/index.qmd#more-operations).
+
+## Small example
+
+```python
+import numpy as np
+import ndfiltrs as nf
+
+line = np.array([1.0, np.nan, 5.0])  # before
+nf.nanmedian_filter(line, size=3)    # after: array([1., 3., 5.])
+```
+
+`nanmedian_filter` omits NaNs. The plain `median_filter` propagates a NaN
+to every window containing it. Choose the policy explicitly.
+
+## Input contract
+
+Use aligned, native-endian `float32` or `float64` arrays with at least one
+dimension. Statistics use positive odd rectangular windows. Boundary modes
+are `reflect`, `constant`, `nearest`, `mirror`, and `wrap`.
+
+These filters have their own documented contracts; SciPy functions may accept
+different arguments or use different numerical algorithms.
+
+## Version and build scope
+
+This site follows the repository's **main branch**. It can describe changes
+that are not yet on PyPI. API pages are generated from Python source
+docstrings on every documentation build.
+
+The examples are static snippets: documentation CI does not run them or build
+the native extension. See [contributing](contributing.qmd) for the reason,
+local validation, and automatic publication.
