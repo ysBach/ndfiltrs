@@ -5,8 +5,9 @@ pure-Rust median-selection kernel from [reducers](https://github.com/ysBach/redu
 without requiring its Python package at runtime.
 
 Version 0.1.0 provides N-dimensional neighborhood statistics, arbitrary-kernel
-convolution, Gaussian filters, and masked-pixel repair for aligned, native-endian
-NumPy `float32` and `float64` arrays. Unaligned arrays are rejected.
+convolution, Gaussian filters, and masked-pixel repair.
+Inputs must be aligned, native-endian NumPy `float32` or `float64` arrays.
+The filters reject unaligned arrays.
 
 Read the [online documentation](https://ysbach.github.io/ndfiltrs/) for the
 quickstart, API reference, numerical guides, and benchmarks.
@@ -14,21 +15,22 @@ It follows `main` and may include changes not yet released on PyPI.
 
 ## Source build
 
-The first PyPI release is being prepared. The complete publishing procedure is
-in [RELEASING.md](RELEASING.md). With a Rust 1.84+ toolchain installed, run from
-the repository root. Synchronization
-uses the project's `.venv`:
+The first PyPI release is not yet available. See [RELEASING.md](RELEASING.md)
+for the publishing procedure.
+
+Install a Rust 1.84+ toolchain. Run these commands from the repository root.
+They use the project's `.venv`:
 
 ```bash
 uv sync --frozen --extra dev
 uv run --no-sync maturin develop --release --locked
 ```
 
-To use an existing shared environment instead, activate it and run
-`uv run --active --no-sync maturin develop --release --locked`. It must already
-contain the build and runtime dependencies. Use `--active --no-sync` for all
-subsequent `uv run` commands in that environment; never run `uv sync` or
-`uv pip sync` against a shared environment.
+To use a shared environment, first check that it contains the build and runtime
+dependencies. Activate that environment. Run
+`uv run --active --no-sync maturin develop --release --locked`.
+Use `--active --no-sync` for every later `uv run` command in that environment.
+Never run `uv sync` or `uv pip sync` against a shared environment.
 
 ## Developer tests
 
@@ -40,22 +42,29 @@ uv run --no-sync maturin develop --release --locked --features test-hooks
 uv run --no-sync pytest -q
 ```
 
-Release and ordinary source builds omit `test-hooks`; those private classes
-and functions are absent from the resulting extension.
+Release and ordinary source builds omit `test-hooks`.
+Their extensions do not contain the private test classes and functions.
 
-Before submitting changes, run `uv run --no-sync ruff check .`,
-`uv run --no-sync ruff format --check .`, `cargo fmt --all -- --check`,
-`cargo test --locked --no-default-features`, `cargo test --locked --features
-benchmark`, and `cargo clippy --locked --features test-hooks -- -D warnings`.
-Keep numerical changes covered by independent expected results; preserve the
-versioned [gold image](tests/data/gold_v1/README.md) rather than regenerating it
-to fit an implementation. Benchmark procedures are in
-[benchmarks/README.md](benchmarks/README.md).
+Run these checks before submitting changes:
+
+```bash
+uv run --no-sync ruff check .
+uv run --no-sync ruff format --check .
+cargo fmt --all -- --check
+cargo test --locked --no-default-features
+cargo test --locked --features benchmark
+cargo clippy --locked --features test-hooks -- -D warnings
+```
+
+Test numerical changes against independent expected results.
+Preserve the versioned [gold image](tests/data/gold_v1/README.md).
+Do not regenerate it to fit an implementation.
+See [benchmarks/README.md](benchmarks/README.md) for benchmark procedures.
 
 ## Build the documentation
 
-Install [Quarto](https://quarto.org/docs/get-started/) (the site is tested with
-1.9.37), then create a separate docs environment:
+Install [Quarto](https://quarto.org/docs/get-started/).
+The site build uses version 1.9.37. Create a separate docs environment:
 
 ```bash
 uv venv .venv-docs --python 3.13
@@ -67,15 +76,19 @@ make docs-preview
 Check the rendered menus with
 `.venv-docs/bin/python -m pytest -q tests/test_docs_navigation.py`.
 
-Edit guides in `docs/*.md`, API docstrings in `python/ndfiltrs/`, and site
-navigation in `docs/quarto/_quarto.yml`. The build generates the guide and
-API pages; do not edit those generated files. Examples are not executed
-during the site build.
+Edit the source files for each part of the site:
+
+- Guides: `docs/*.md`.
+- API descriptions: docstrings in `python/ndfiltrs/`.
+- Navigation: `docs/quarto/_quarto.yml`.
+
+The build generates the guide and API pages. Do not edit those generated files.
+The site build does not execute examples.
 
 The [docs workflow](.github/workflows/docs.yml) checks pull requests and
 publishes pushes to `main`. In GitHub's Pages settings, select **GitHub
-Actions** as the source and allow the `github-pages` environment to deploy
-from `main`.
+Actions** as the source. Allow the `github-pages` environment to deploy from
+`main`.
 
 ## Use
 
@@ -93,8 +106,9 @@ local_std = nf.nanstd_filter(image, 3, ddof=1, min_count=2)
 local_var = nf.nanvar_filter(image, 3, ddof=1, min_count=2)
 ```
 
-Scalar windows broadcast to every axis; exact-rank tuples support anisotropic
-windows. Boundary modes are `reflect`, `constant`, `nearest`, `mirror`, and
+An integer window size applies to every axis.
+To use different sizes, give a tuple with one size per axis.
+Boundary modes are `reflect`, `constant`, `nearest`, `mirror`, and
 `wrap`. Any window shape works through `footprint`, and `origin` shifts it as in
 SciPy:
 
@@ -104,7 +118,7 @@ sky = nf.nanmedian_filter(image, footprint=annulus)  # ring median
 third = nf.rank_filter(image, 2, footprint=nf.kernels.tophat(1, ndim=2))
 ```
 
-Window geometry matches SciPy; NaN/infinity policies are explicit. See
+Window geometry matches SciPy. NaN and infinity policies are explicit. See
 [filtering semantics](docs/semantics.md) for the exact contract.
 
 To choose an exact selection network or running-sum mean:
@@ -116,9 +130,10 @@ smoothed = nf.nanmean_filter(image, 31, method="boxcar")
 
 `sortnet` preserves direct median results, including arbitrary footprints.
 `boxcar` accepts rectangular sizes and rounds the exact mean once to the output
-dtype; its last bits can differ from the direct compensated sum. Both trade
-memory for less repeated work and are not faster for every input. Defaults
-remain `method="direct"`. See [measured comparisons](docs/benchmarks.md).
+dtype. Its last bits can differ from the direct compensated sum.
+Both methods use more memory to reduce repeated work. Neither is faster for
+every input. The default is `method="direct"`.
+See [measured comparisons](docs/benchmarks.md).
 
 Set `RAYON_NUM_THREADS` before the first Rayon-using call to configure
 parallelism. `nf.get_num_threads()` reports the global pool's thread count.
@@ -140,7 +155,7 @@ weights: `nanconvolve` and `nancorrelate` are weighted smoothing operations.
 Gaussian functions also include `gaussian_gradient_magnitude` and selected-axis
 filtering. Smoothing accepts `method="separable"` to avoid a dense product
 kernel. The default direct method also supports derivatives and underflowing
-product weights; axis grouping can change floating-point rounding.
+product weights. Axis grouping can change floating-point rounding.
 See [convolution and Gaussian semantics](docs/convolution.md) for orientation,
 support, derivative conventions, and numerical limits.
 
@@ -172,8 +187,8 @@ level = nf.nanbiweight_location_filter(image, size=15)
 
 Percentiles use linear interpolation. Sigma clipping omits all nonfinite values,
 rejects outliers iteratively, and returns the retained mean, median, or mode.
-`mode_filter` uses the SExtractor, MMM, or IRAF mode formula; biweight filters
-follow `astropy.stats`. See
+`mode_filter` uses the SExtractor, MMM, or IRAF mode formula.
+Biweight filters follow `astropy.stats`. See
 [robust filtering semantics](docs/robust.md) for scaling, infinity rules,
 convergence, and boundary support.
 
@@ -201,26 +216,34 @@ mean_repaired = nf.fixpix(data, bad, kernel=kernel)  # kernel implies method="me
 result = nf.fixpix(data, bad, copy=False)
 ```
 
-`fixpix` supports linear interpolation, local median replacement, and
-local mean replacement (`method="mean"`, optionally weighted by a `kernel`,
-like Astropy's `interpolate_replace_nans` with an explicit mask). All options
-including `method` are keyword-only. The default linear method interpolates
-whole masked runs along their shortest axis, using `priority` to break ties. It preserves the numerical array behavior of
+`fixpix` supports three repair methods:
+
+- Linear interpolation fills whole masked runs along their shortest axis.
+  It uses `priority` to break ties. This is the default method.
+- Median replacement (`method="median"`) uses original unmasked neighbors.
+- Mean replacement (`method="mean"`) also uses original unmasked neighbors, with optional
+  `kernel` weights. It resembles Astropy's `interpolate_replace_nans` with
+  an explicit mask.
+
+All options, including `method`, are keyword-only. The default linear method
+preserves the numerical array behavior of
 [astroimred's `fixpix`](https://github.com/ysBach/astroimred/blob/fb70cae872406f907175e3b47d497ffe14b8c238/src/astroimred/imutil/pixels.py),
-including crossing-run write order, and releases the GIL.
-Median and mean repair use original unmasked neighbors and compute only masked
-windows, in parallel.
-The default always returns an independent copy. `copy=False` permits input reuse
-only when the mask is absent or empty; actual repair never mutates the input.
-It returns an ndarray; FITS/CCDData parsing and header updates remain with the
-calling astronomy package. See [repair semantics](docs/fixpix.md) for edges,
+including crossing-run write order. It releases the GIL.
+Median and mean repair compute only masked windows, in parallel.
+
+The default always returns an independent copy.
+`copy=False` permits input reuse only when the mask is absent or empty.
+Actual repair never mutates the input.
+
+`fixpix` returns an ndarray. The calling astronomy package must handle
+FITS/CCDData parsing and header updates. See [repair semantics](docs/fixpix.md) for edges,
 nonfinite anchors, dtype restrictions, and the comparison procedure.
 
 ## Reusable reference image
 
-[Gold image v1](tests/data/gold_v1/README.md) supplies a frozen 256 x 320 scene,
-noiseless and uncorrupted noisy truth layers, sparse and stress masks, and
-analytic controls. Tests verify file integrity and compare current methods with
+[Gold image v1](tests/data/gold_v1/README.md) supplies a fixed 256 x 320 scene.
+It includes noiseless and uncorrupted noisy truth layers, sparse and stress masks,
+and analytic controls. Tests check file integrity and compare current methods with
 independent references. [Preview](docs/images/gold-v1.png).
 
 ```bash
@@ -228,33 +251,38 @@ uv run --no-sync pytest -q tests/test_gold_image.py
 uv run --no-sync python scripts/evaluate_gold_image.py --output /tmp/gold-report.json
 ```
 
-`std_filter`/`var_filter` use `ddof=0` by default: each window divides its
-centered sum of squares by `retained_count - ddof`. NaN-aware versions omit
+## Local scatter and mean
+
+`std_filter` and `var_filter` use `ddof=0` by default.
+Each window divides its centered sum of squares by `retained_count - ddof`.
+NaN-aware versions omit
 NaNs, optionally omit infinities, and enforce `min_count` after omission.
 Insufficient counts or retained infinities yield NaN. Standard deviation is
 computed without first squaring its physical scale, so it can remain finite
 when variance overflows. These maps measure local scatter, including image
-structure; they are not calibrated detector uncertainty maps.
+structure. They are not calibrated detector uncertainty maps.
 
-By default, mean filters use compensated float64 accumulation with an overflow rescaling
-fallback and cast once to the input dtype. By default each neighborhood is
-evaluated independently, so work scales with window volume. For large boxcars,
-`method="separable"` averages one axis at a time,
-with rounding that differs in the last bits.
-`nanmean_filter` omits NaNs and optionally infinities; finite hot/dead pixels
-still contribute. It is a full-image filter, not a masked-pixel repair method.
+By default, mean filters use compensated float64 sums and rescale values if
+the sum overflows. They cast once to the input dtype.
+They evaluate each neighborhood independently, so work scales with window volume.
+For large boxcars, `method="separable"` averages one axis at a time.
+Its rounding differs in the last bits.
+
+`nanmean_filter` omits NaNs and optionally infinities.
+Finite hot or dead pixels still contribute.
+It is a full-image filter, not a masked-pixel repair method.
 
 ## Release status
 
 Performance depends on the operation, window, array layout, and thread count.
 `ndfiltrs` does not promise to outperform SciPy or NumPy on every workload.
 The [benchmarks](docs/benchmarks.md) separate measured comparisons
-from untested claims. Native IRAF `fixpix` has not been benchmarked;
-comparisons with [astroimred](https://github.com/ysBach/astroimred)'s `fixpix`
+from untested claims. No native IRAF `fixpix` benchmark is available.
+Comparisons with [astroimred](https://github.com/ysBach/astroimred)'s `fixpix`
 do not establish IRAF performance.
 
 Release tooling targets GitHub and PyPI. Manual release-workflow runs build and
-test without uploading to a registry; matching version tags publish only after
+test without uploading to a registry. Matching version tags publish only after
 the required CI and wheel jobs pass. See [RELEASING.md](RELEASING.md) for the
 first-project setup, rehearsal, tagging commands, and the shared publishing
 convention for these packages.
@@ -267,10 +295,9 @@ See [source attribution](docs/semantics.md#source-attribution) for provenance.
 
 ## License
 
-`ndfiltrs` is distributed under the [MIT License](LICENSE).
-The `fixpix` behavioral source is [astroimred](https://github.com/ysBach/astroimred);
-its BSD notice is included in
-[the package](python/ndfiltrs/licenses/astroimred-BSD-3-Clause.txt).
+`ndfiltrs` uses the [MIT License](LICENSE).
+The `fixpix` behavioral source is [astroimred](https://github.com/ysBach/astroimred).
+The package includes its [BSD notice](python/ndfiltrs/licenses/astroimred-BSD-3-Clause.txt).
 The Rust [reducers 0.4.0](https://crates.io/crates/reducers/0.4.0) dependency
-declares MIT and BSD-3-Clause licenses;
-both notices are included in [the package](python/ndfiltrs/licenses/).
+declares MIT and BSD-3-Clause licenses.
+The package includes [both notices](python/ndfiltrs/licenses/).

@@ -99,8 +99,8 @@ def convolve(
         Aligned, native-endian `float32` or `float64` input, rank one or higher.
     weights : array-like
         Finite real coefficients with the input rank and nonempty dimensions.
-        Odd, even, signed, and zero-sum kernels are supported. No normalization
-        is applied. Use singleton dimensions to leave axes unfiltered.
+        The function supports odd, even, signed, and zero-sum kernels without
+        normalization. Use singleton dimensions to leave axes unfiltered.
     mode : str or tuple of str, optional
         Boundary mode per input axis: `'reflect'`, `'constant'`, `'nearest'`,
         `'mirror'`, or `'wrap'`. Default is `'reflect'`.
@@ -119,10 +119,10 @@ def convolve(
     -----
     Each output sums ``weights[j] * array[i + anchor - j]`` after boundary
     mapping. Zero coefficients skip their samples, including NaN and infinity.
-    Other NaNs propagate locally; opposite weighted infinities produce NaN.
+    Other NaNs propagate locally. Opposite weighted infinities produce NaN.
     An all-zero kernel returns positive zero. Accumulation uses compensated
     `float64` arithmetic with overflow recovery and one final dtype cast.
-    Exact rounding is not guaranteed; fallback scaling can lose tiny terms.
+    Exact rounding is not guaranteed. Fallback scaling can lose tiny terms.
     """
     arguments = _kernel_arguments(array, weights, mode, cval, origin)
     filtering = arguments.filtering
@@ -154,10 +154,10 @@ def correlate(
     array : array-like
         Aligned, native-endian `float32` or `float64` input.
     weights : array-like
-        Finite real coefficients with the input rank. Signed, zero-sum, odd,
-        and even kernels are supported without normalization.
+        Finite real coefficients with the input rank. The function supports
+        signed, zero-sum, odd, and even kernels without normalization.
     mode : str or tuple of str, optional
-        Boundary mode per input axis. Default is `'reflect'`; supported modes
+        Boundary mode per input axis. Default is `'reflect'`. Supported modes
         are the same as `convolve`.
     cval : float, optional
         Constant boundary value, cast to the input dtype. Default is `0.0`.
@@ -207,7 +207,7 @@ def nanconvolve(
         Aligned, native-endian `float32` or `float64` input.
     weights : array-like
         Finite nonnegative coefficients with the input rank and at least one
-        positive entry. Signed derivative kernels are rejected.
+        positive entry. The function rejects signed derivative kernels.
     mode : str or tuple of str, optional
         Boundary mode per input axis, as in `convolve`. Default is `'reflect'`.
     cval : float, optional
@@ -231,7 +231,7 @@ def nanconvolve(
     -----
     Divide each retained weighted sum by its retained weight sum. For example,
     weights ``[1, 1, 1]`` produce a mean, even on entirely finite input.
-    Retained infinities of one sign produce that infinity; opposing signs
+    Retained infinities of one sign produce that infinity. Opposing signs
     produce NaN. Zero-weight positions never participate in values or counts.
     """
     arguments = _kernel_arguments(
@@ -290,13 +290,13 @@ def nancorrelate(
     Returns
     -------
     numpy.ndarray
-        New owned array with the input shape and dtype; insufficient support
+        New owned array with the input shape and dtype. Insufficient support
         produces canonical NaN.
 
     Notes
     -----
     Uses the orientation of `correlate` and the normalization, omission, and
-    support-count rules of `nanconvolve`. Signed kernels are rejected.
+    support-count rules of `nanconvolve`. The function rejects signed kernels.
     """
     arguments = _kernel_arguments(
         array,

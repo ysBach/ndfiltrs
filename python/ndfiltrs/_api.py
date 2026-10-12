@@ -87,17 +87,18 @@ def median_filter(
     ----------
     array : array-like
         Dense, aligned array with native-endian `float32` or `float64` dtype
-        and rank one or higher. Unaligned arrays are rejected.
+        and rank one or higher. The function rejects unaligned arrays.
     size : int or tuple of int, optional
-        Rectangular window size. A scalar broadcasts to every axis; a tuple
+        Rectangular window size. A scalar broadcasts to every axis. A tuple
         has one entry per axis. Default is `3` when `footprint` is `None`.
     footprint : array-like, optional
-        Window with the array's rank; nonzero entries are used. Use it for
+        Window with the array's rank. The function uses positions where
+        `footprint` is nonzero. Use it for
         disks, rings, or other non-rectangular windows, for example
         ``kernels.tophat(2, ndim=2)``. Pass `size` or `footprint`, not both.
     origin : int or tuple of int, optional
-        Window shift per axis, as in SciPy. `0` centers odd windows;
-        positive values move the window toward lower indices. Default is `0`.
+        Window shift per axis, as in SciPy. `0` centers odd windows.
+        Positive values move the window toward lower indices. Default is `0`.
     mode : {'reflect', 'constant', 'nearest', 'mirror', 'wrap'} or tuple, optional
         Boundary mode per axis. A scalar broadcasts to every axis. Default is
         `'reflect'`.
@@ -118,7 +119,7 @@ def median_filter(
     Notes
     -----
     NaNs propagate. Infinities participate in the median. An even number of
-    samples gives the midpoint of the two middle values; SciPy's
+    samples gives the midpoint of the two middle values. SciPy's
     `median_filter` returns the upper one instead.
 
     `'sortnet'` preserves the direct method's numerical semantics. It uses a
@@ -152,17 +153,18 @@ def nanmedian_filter(
     ----------
     array : array-like
         Dense, aligned array with native-endian `float32` or `float64` dtype
-        and rank one or higher. Unaligned arrays are rejected.
+        and rank one or higher. The function rejects unaligned arrays.
     size : int or tuple of int, optional
-        Rectangular window size. A scalar broadcasts to every axis; a tuple
+        Rectangular window size. A scalar broadcasts to every axis. A tuple
         has one entry per axis. Default is `3` when `footprint` is `None`.
     footprint : array-like, optional
-        Window with the array's rank; nonzero entries are used. Use it for
+        Window with the array's rank. The function uses positions where
+        `footprint` is nonzero. Use it for
         disks, rings, or other non-rectangular windows, for example
         ``kernels.tophat(2, ndim=2)``. Pass `size` or `footprint`, not both.
     origin : int or tuple of int, optional
-        Window shift per axis, as in SciPy. `0` centers odd windows;
-        positive values move the window toward lower indices. Default is `0`.
+        Window shift per axis, as in SciPy. `0` centers odd windows.
+        Positive values move the window toward lower indices. Default is `0`.
     mode : {'reflect', 'constant', 'nearest', 'mirror', 'wrap'} or tuple, optional
         Boundary mode per axis. A scalar broadcasts to every axis. Default is
         `'reflect'`.
@@ -186,7 +188,7 @@ def nanmedian_filter(
 
     Notes
     -----
-    This function always omits NaNs. It is not a drop-in SciPy replacement;
+    This function always omits NaNs. It is not a drop-in SciPy replacement.
     SciPy's median filter does not expose these omission semantics.
     Both methods preserve the same retained-count, midpoint, and signed-zero
     rules. `'sortnet'` uses more scratch memory for interior row runs and is
@@ -221,17 +223,18 @@ def mean_filter(
     ----------
     array : array-like
         Dense, aligned array with native-endian `float32` or `float64` dtype
-        and rank one or higher. Unaligned arrays are rejected.
+        and rank one or higher. The function rejects unaligned arrays.
     size : int or tuple of int, optional
-        Rectangular window size. A scalar broadcasts to every axis; a tuple
+        Rectangular window size. A scalar broadcasts to every axis. A tuple
         has one entry per axis. Default is `3` when `footprint` is `None`.
     footprint : array-like, optional
-        Window with the array's rank; nonzero entries are used. Use it for
+        Window with the array's rank. The function uses positions where
+        `footprint` is nonzero. Use it for
         disks, rings, or other non-rectangular windows, for example
         ``kernels.tophat(2, ndim=2)``. Pass `size` or `footprint`, not both.
     origin : int or tuple of int, optional
-        Window shift per axis, as in SciPy. `0` centers odd windows;
-        positive values move the window toward lower indices. Default is `0`.
+        Window shift per axis, as in SciPy. `0` centers odd windows.
+        Positive values move the window toward lower indices. Default is `0`.
     mode : {'reflect', 'constant', 'nearest', 'mirror', 'wrap'} or tuple, optional
         Boundary mode per axis. A scalar broadcasts to every axis. Default is
         `'reflect'`.
@@ -258,15 +261,15 @@ def mean_filter(
     Notes
     -----
     NaNs propagate only to windows containing them. Infinities of one sign
-    produce that infinity; opposite signs produce canonical NaN. With
+    produce that infinity. Opposite signs produce canonical NaN. With
     `method='direct'`, finite values use compensated `float64` accumulation
     and overflow rescaling, with one final cast to the input dtype.
     Subnormal contributions can underflow in
-    overflow rescaling; exact rounding is not guaranteed. Zero sums are `+0.0`.
+    overflow rescaling. Exact rounding is not guaranteed. Zero sums are `+0.0`.
 
     With `size` this is a boxcar (uniform) filter. `'direct'` evaluates each
     window independently in C order. `'boxcar'` keeps two full-image exact
-    accumulator arrays plus support counts; memory depends on the input's
+    accumulator arrays plus support counts. Its memory depends on the input's
     exponent range and window support. Neither method is universally faster.
     Results for each method are independent of thread count.
     """
@@ -299,17 +302,18 @@ def nanmean_filter(
     ----------
     array : array-like
         Dense, aligned array with native-endian `float32` or `float64` dtype
-        and rank one or higher. Unaligned arrays are rejected.
+        and rank one or higher. The function rejects unaligned arrays.
     size : int or tuple of int, optional
-        Rectangular window size. A scalar broadcasts to every axis; a tuple
+        Rectangular window size. A scalar broadcasts to every axis. A tuple
         has one entry per axis. Default is `3` when `footprint` is `None`.
     footprint : array-like, optional
-        Window with the array's rank; nonzero entries are used. Use it for
+        Window with the array's rank. The function uses positions where
+        `footprint` is nonzero. Use it for
         disks, rings, or other non-rectangular windows, for example
         ``kernels.tophat(2, ndim=2)``. Pass `size` or `footprint`, not both.
     origin : int or tuple of int, optional
-        Window shift per axis, as in SciPy. `0` centers odd windows;
-        positive values move the window toward lower indices. Default is `0`.
+        Window shift per axis, as in SciPy. `0` centers odd windows.
+        Positive values move the window toward lower indices. Default is `0`.
     mode : {'reflect', 'constant', 'nearest', 'mirror', 'wrap'} or tuple, optional
         Boundary mode per axis. A scalar broadcasts to every axis. Default is
         `'reflect'`.
@@ -340,10 +344,11 @@ def nanmean_filter(
     Notes
     -----
     NaNs are always omitted, without warnings for empty neighborhoods. Retained
-    infinities of one sign produce that infinity; opposite signs produce
+    infinities of one sign produce that infinity. Opposite signs produce
     canonical NaN. Boundary repetitions and `cval` count as separate samples.
     Accumulation, rounding, memory, and computational cost follow `mean_filter`.
-    A finite hot or dead pixel is retained: NaN omission is not bad-pixel masking.
+    The filter retains finite hot or dead pixels. NaN omission does not identify
+    bad pixels.
     """
     if not isinstance(ignore_inf, (bool, np.bool_)):
         raise TypeError("ignore_inf must be a boolean")
@@ -377,17 +382,18 @@ def min_filter(
     ----------
     array : array-like
         Dense, aligned array with native-endian `float32` or `float64` dtype
-        and rank one or higher. Unaligned arrays are rejected.
+        and rank one or higher. The function rejects unaligned arrays.
     size : int or tuple of int, optional
-        Rectangular window size. A scalar broadcasts to every axis; a tuple
+        Rectangular window size. A scalar broadcasts to every axis. A tuple
         has one entry per axis. Default is `3` when `footprint` is `None`.
     footprint : array-like, optional
-        Window with the array's rank; nonzero entries are used. Use it for
+        Window with the array's rank. The function uses positions where
+        `footprint` is nonzero. Use it for
         disks, rings, or other non-rectangular windows, for example
         ``kernels.tophat(2, ndim=2)``. Pass `size` or `footprint`, not both.
     origin : int or tuple of int, optional
-        Window shift per axis, as in SciPy. `0` centers odd windows;
-        positive values move the window toward lower indices. Default is `0`.
+        Window shift per axis, as in SciPy. `0` centers odd windows.
+        Positive values move the window toward lower indices. Default is `0`.
     mode : {'reflect', 'constant', 'nearest', 'mirror', 'wrap'} or tuple, optional
         Boundary mode per axis. A scalar broadcasts to every axis. Default is
         `'reflect'`.
@@ -428,17 +434,18 @@ def max_filter(
     ----------
     array : array-like
         Dense, aligned array with native-endian `float32` or `float64` dtype
-        and rank one or higher. Unaligned arrays are rejected.
+        and rank one or higher. The function rejects unaligned arrays.
     size : int or tuple of int, optional
-        Rectangular window size. A scalar broadcasts to every axis; a tuple
+        Rectangular window size. A scalar broadcasts to every axis. A tuple
         has one entry per axis. Default is `3` when `footprint` is `None`.
     footprint : array-like, optional
-        Window with the array's rank; nonzero entries are used. Use it for
+        Window with the array's rank. The function uses positions where
+        `footprint` is nonzero. Use it for
         disks, rings, or other non-rectangular windows, for example
         ``kernels.tophat(2, ndim=2)``. Pass `size` or `footprint`, not both.
     origin : int or tuple of int, optional
-        Window shift per axis, as in SciPy. `0` centers odd windows;
-        positive values move the window toward lower indices. Default is `0`.
+        Window shift per axis, as in SciPy. `0` centers odd windows.
+        Positive values move the window toward lower indices. Default is `0`.
     mode : {'reflect', 'constant', 'nearest', 'mirror', 'wrap'} or tuple, optional
         Boundary mode per axis. A scalar broadcasts to every axis. Default is
         `'reflect'`.
@@ -481,17 +488,18 @@ def nanmin_filter(
     ----------
     array : array-like
         Dense, aligned array with native-endian `float32` or `float64` dtype
-        and rank one or higher. Unaligned arrays are rejected.
+        and rank one or higher. The function rejects unaligned arrays.
     size : int or tuple of int, optional
-        Rectangular window size. A scalar broadcasts to every axis; a tuple
+        Rectangular window size. A scalar broadcasts to every axis. A tuple
         has one entry per axis. Default is `3` when `footprint` is `None`.
     footprint : array-like, optional
-        Window with the array's rank; nonzero entries are used. Use it for
+        Window with the array's rank. The function uses positions where
+        `footprint` is nonzero. Use it for
         disks, rings, or other non-rectangular windows, for example
         ``kernels.tophat(2, ndim=2)``. Pass `size` or `footprint`, not both.
     origin : int or tuple of int, optional
-        Window shift per axis, as in SciPy. `0` centers odd windows;
-        positive values move the window toward lower indices. Default is `0`.
+        Window shift per axis, as in SciPy. `0` centers odd windows.
+        Positive values move the window toward lower indices. Default is `0`.
     mode : {'reflect', 'constant', 'nearest', 'mirror', 'wrap'} or tuple, optional
         Boundary mode per axis. A scalar broadcasts to every axis. Default is
         `'reflect'`.
@@ -542,17 +550,18 @@ def nanmax_filter(
     ----------
     array : array-like
         Dense, aligned array with native-endian `float32` or `float64` dtype
-        and rank one or higher. Unaligned arrays are rejected.
+        and rank one or higher. The function rejects unaligned arrays.
     size : int or tuple of int, optional
-        Rectangular window size. A scalar broadcasts to every axis; a tuple
+        Rectangular window size. A scalar broadcasts to every axis. A tuple
         has one entry per axis. Default is `3` when `footprint` is `None`.
     footprint : array-like, optional
-        Window with the array's rank; nonzero entries are used. Use it for
+        Window with the array's rank. The function uses positions where
+        `footprint` is nonzero. Use it for
         disks, rings, or other non-rectangular windows, for example
         ``kernels.tophat(2, ndim=2)``. Pass `size` or `footprint`, not both.
     origin : int or tuple of int, optional
-        Window shift per axis, as in SciPy. `0` centers odd windows;
-        positive values move the window toward lower indices. Default is `0`.
+        Window shift per axis, as in SciPy. `0` centers odd windows.
+        Positive values move the window toward lower indices. Default is `0`.
     mode : {'reflect', 'constant', 'nearest', 'mirror', 'wrap'} or tuple, optional
         Boundary mode per axis. A scalar broadcasts to every axis. Default is
         `'reflect'`.
@@ -602,17 +611,18 @@ def var_filter(
     ----------
     array : array-like
         Dense, aligned array with native-endian `float32` or `float64` dtype
-        and rank one or higher. Unaligned arrays are rejected.
+        and rank one or higher. The function rejects unaligned arrays.
     size : int or tuple of int, optional
-        Rectangular window size. A scalar broadcasts to every axis; a tuple
+        Rectangular window size. A scalar broadcasts to every axis. A tuple
         has one entry per axis. Default is `3` when `footprint` is `None`.
     footprint : array-like, optional
-        Window with the array's rank; nonzero entries are used. Use it for
+        Window with the array's rank. The function uses positions where
+        `footprint` is nonzero. Use it for
         disks, rings, or other non-rectangular windows, for example
         ``kernels.tophat(2, ndim=2)``. Pass `size` or `footprint`, not both.
     origin : int or tuple of int, optional
-        Window shift per axis, as in SciPy. `0` centers odd windows;
-        positive values move the window toward lower indices. Default is `0`.
+        Window shift per axis, as in SciPy. `0` centers odd windows.
+        Positive values move the window toward lower indices. Default is `0`.
     mode : {'reflect', 'constant', 'nearest', 'mirror', 'wrap'} or tuple, optional
         Boundary mode per axis. A scalar broadcasts to every axis. Default is
         `'reflect'`.
@@ -645,7 +655,7 @@ def var_filter(
     Finite values use stable `float64` accumulation with one final cast to the
     input dtype. Boundary repetitions and `cval` count as separate samples.
     NaNs and infinities affect only windows containing them. The result measures
-    local scatter, including spatial structure; it is not a measurement-noise
+    local scatter, including spatial structure. It is not a measurement-noise
     estimate. A variance outside the output dtype's range can overflow.
     """
     arguments = validate_filter_arguments(
@@ -677,17 +687,18 @@ def std_filter(
     ----------
     array : array-like
         Dense, aligned array with native-endian `float32` or `float64` dtype
-        and rank one or higher. Unaligned arrays are rejected.
+        and rank one or higher. The function rejects unaligned arrays.
     size : int or tuple of int, optional
-        Rectangular window size. A scalar broadcasts to every axis; a tuple
+        Rectangular window size. A scalar broadcasts to every axis. A tuple
         has one entry per axis. Default is `3` when `footprint` is `None`.
     footprint : array-like, optional
-        Window with the array's rank; nonzero entries are used. Use it for
+        Window with the array's rank. The function uses positions where
+        `footprint` is nonzero. Use it for
         disks, rings, or other non-rectangular windows, for example
         ``kernels.tophat(2, ndim=2)``. Pass `size` or `footprint`, not both.
     origin : int or tuple of int, optional
-        Window shift per axis, as in SciPy. `0` centers odd windows;
-        positive values move the window toward lower indices. Default is `0`.
+        Window shift per axis, as in SciPy. `0` centers odd windows.
+        Positive values move the window toward lower indices. Default is `0`.
     mode : {'reflect', 'constant', 'nearest', 'mirror', 'wrap'} or tuple, optional
         Boundary mode per axis. A scalar broadcasts to every axis. Default is
         `'reflect'`.
@@ -721,7 +732,7 @@ def std_filter(
     Finite values use stable `float64` accumulation with one final cast to the
     input dtype. Boundary repetitions and `cval` count as separate samples.
     NaNs and infinities affect only windows containing them. The result measures
-    local scatter, including spatial structure; it is not a measurement-noise
+    local scatter, including spatial structure. It is not a measurement-noise
     estimate. A standard deviation outside the output dtype's range can overflow.
     """
     arguments = validate_filter_arguments(
@@ -755,17 +766,18 @@ def nanvar_filter(
     ----------
     array : array-like
         Dense, aligned array with native-endian `float32` or `float64` dtype
-        and rank one or higher. Unaligned arrays are rejected.
+        and rank one or higher. The function rejects unaligned arrays.
     size : int or tuple of int, optional
-        Rectangular window size. A scalar broadcasts to every axis; a tuple
+        Rectangular window size. A scalar broadcasts to every axis. A tuple
         has one entry per axis. Default is `3` when `footprint` is `None`.
     footprint : array-like, optional
-        Window with the array's rank; nonzero entries are used. Use it for
+        Window with the array's rank. The function uses positions where
+        `footprint` is nonzero. Use it for
         disks, rings, or other non-rectangular windows, for example
         ``kernels.tophat(2, ndim=2)``. Pass `size` or `footprint`, not both.
     origin : int or tuple of int, optional
-        Window shift per axis, as in SciPy. `0` centers odd windows;
-        positive values move the window toward lower indices. Default is `0`.
+        Window shift per axis, as in SciPy. `0` centers odd windows.
+        Positive values move the window toward lower indices. Default is `0`.
     mode : {'reflect', 'constant', 'nearest', 'mirror', 'wrap'} or tuple, optional
         Boundary mode per axis. A scalar broadcasts to every axis. Default is
         `'reflect'`.
@@ -804,7 +816,7 @@ def nanvar_filter(
     NaNs are always omitted. Finite values use stable `float64` accumulation
     with one final cast to the input dtype. Boundary repetitions and retained
     `cval` values count as separate samples. The result measures local scatter,
-    including spatial structure; it is not a measurement-noise estimate.
+    including spatial structure. It is not a measurement-noise estimate.
     A variance outside the output dtype's range can overflow.
     """
     if not isinstance(ignore_inf, (bool, np.bool_)):
@@ -842,17 +854,18 @@ def nanstd_filter(
     ----------
     array : array-like
         Dense, aligned array with native-endian `float32` or `float64` dtype
-        and rank one or higher. Unaligned arrays are rejected.
+        and rank one or higher. The function rejects unaligned arrays.
     size : int or tuple of int, optional
-        Rectangular window size. A scalar broadcasts to every axis; a tuple
+        Rectangular window size. A scalar broadcasts to every axis. A tuple
         has one entry per axis. Default is `3` when `footprint` is `None`.
     footprint : array-like, optional
-        Window with the array's rank; nonzero entries are used. Use it for
+        Window with the array's rank. The function uses positions where
+        `footprint` is nonzero. Use it for
         disks, rings, or other non-rectangular windows, for example
         ``kernels.tophat(2, ndim=2)``. Pass `size` or `footprint`, not both.
     origin : int or tuple of int, optional
-        Window shift per axis, as in SciPy. `0` centers odd windows;
-        positive values move the window toward lower indices. Default is `0`.
+        Window shift per axis, as in SciPy. `0` centers odd windows.
+        Positive values move the window toward lower indices. Default is `0`.
     mode : {'reflect', 'constant', 'nearest', 'mirror', 'wrap'} or tuple, optional
         Boundary mode per axis. A scalar broadcasts to every axis. Default is
         `'reflect'`.
@@ -891,7 +904,7 @@ def nanstd_filter(
     NaNs are always omitted. Finite values use stable `float64` accumulation
     with one final cast to the input dtype. Boundary repetitions and retained
     `cval` values count as separate samples. The result measures local scatter,
-    including spatial structure; it is not a measurement-noise estimate.
+    including spatial structure. It is not a measurement-noise estimate.
     A standard deviation outside the output dtype's range can overflow.
     """
     if not isinstance(ignore_inf, (bool, np.bool_)):
@@ -927,16 +940,17 @@ def rank_filter(
     ----------
     array : array-like
         Dense, aligned array with native-endian `float32` or `float64` dtype
-        and rank one or higher. Unaligned arrays are rejected.
+        and rank one or higher. The function rejects unaligned arrays.
     rank : int
-        Zero-based position in ascending order. `0` is the minimum; negative
+        Zero-based position in ascending order. `0` is the minimum. Negative
         values count from the maximum (`-1`), as in SciPy. It must satisfy
         ``-n <= rank < n``, where `n` is the number of window elements.
     size : int or tuple of int, optional
-        Rectangular window size. A scalar broadcasts to every axis; a tuple
+        Rectangular window size. A scalar broadcasts to every axis. A tuple
         has one entry per axis. Default is `3` when `footprint` is `None`.
     footprint : array-like, optional
-        Window with the array's rank; nonzero entries are used. Pass `size` or
+        Window with the array's rank. The function uses positions where
+        `footprint` is nonzero. Pass `size` or
         `footprint`, not both.
     origin : int or tuple of int, optional
         Window shift per axis, as in `median_filter`. Default is `0`.

@@ -272,7 +272,7 @@ def gaussian_filter(
         Finite nonnegative Gaussian width in pixels per selected axis.
     order : int or tuple of int, optional
         Nonnegative derivative order per selected axis. Default is `0`
-        (smoothing). A scalar broadcasts; ``order=(1, 0)`` differentiates only
+        (smoothing). A scalar broadcasts. ``order=(1, 0)`` differentiates only
         the first selected axis. Positive orders require positive `sigma`.
     mode : str or tuple of str, optional
         Boundary modes per selected axis, as in `convolve`.
@@ -280,12 +280,12 @@ def gaussian_filter(
         Constant boundary value, cast to the input dtype. Default is `0.0`.
     truncate : float, optional
         Nonnegative support in units of `sigma`. Used only when `radius` is
-        absent; radius is ``floor(truncate * sigma + 0.5)``. Default is `4.0`.
+        absent. Radius is ``floor(truncate * sigma + 0.5)``. Default is `4.0`.
     radius : int or tuple of int, optional
         Exact nonnegative radius per selected axis, overriding `truncate`.
         Kernel lengths are ``2 * radius + 1``.
     axes : tuple of int or None, optional
-        Unique axes to filter; negative axes are accepted. Default selects
+        Unique axes to filter. Negative axes are valid. Default selects
         every axis. Tuple parameters follow the order of `axes`.
 
     method : {'direct', 'separable'}, optional
@@ -301,16 +301,18 @@ def gaussian_filter(
 
     Notes
     -----
-    Order-zero coefficients are normalized samples of a Gaussian; derivatives
+    Order-zero coefficients are normalized samples of a Gaussian. Derivatives
     use its analytic Hermite-polynomial derivatives, without forcing zero sum.
     Smoothing renormalizes the computed weights while still propagating NaNs,
     preserving finite constant neighborhoods despite coefficient rounding.
     `sigma=0` is an identity kernel for order zero. Zero coefficients do not
-    propagate NaNs or infinities; other nonfinite rules follow `convolve`.
+    propagate NaNs or infinities. Other nonfinite rules follow `convolve`.
+
     Direct evaluation costs work proportional to kernel volume. Separable
-    smoothing costs work proportional to the sum of axis lengths; rounding
-    can differ because accumulation is grouped by axis. Both accumulate in
-    `float64` and cast once to the input dtype. No FFT backend is used.
+    smoothing costs work proportional to the sum of axis lengths. Rounding
+    can differ because the separable method groups accumulation by axis.
+    Both accumulate in `float64` and cast once to the input dtype.
+    Neither method uses an FFT backend.
     """
     _validate_method(method)
     arguments = _gaussian_arguments(
@@ -395,7 +397,7 @@ def nangaussian_filter(
     `nanconvolve` semantics. Derivatives are intentionally absent from this
     normalized smoothing API. Underflowed zero coefficients do not count as
     support. Separable smoothing carries unnormalized retained mass between
-    passes; it does not average already-normalized rows equally. Support
+    passes. It does not average already-normalized rows equally. Support
     counts remain integers. Geometry and method limits follow `gaussian_filter`.
     """
     _validate_method(method)
@@ -444,7 +446,7 @@ def gaussian_laplace(
     radius : int or tuple of int, optional
         Exact per-selected-axis radius, overriding `truncate`.
     axes : tuple of int or None, optional
-        Unique axes whose second derivatives are summed. Default selects all.
+        Unique axes contributing second derivatives to the sum. Default selects all.
 
     Returns
     -------

@@ -10,10 +10,13 @@ background_removed = nf.white_tophat(image, footprint=nf.kernels.tophat(5, ndim=
 
 ## Derivative operators
 
-`sobel`, `prewitt`, and `laplace` match `scipy.ndimage` and work in N-D. Sobel and
-Prewitt use `[-1, 0, 1]` along `axis` and `[1, 2, 1]` or `[1, 1, 1]` along every
-other axis; the result is positive where values increase with index. `laplace`
-sums `[1, -2, 1]` over all axes. NaNs propagate. For NaN-aware or wider
+`sobel`, `prewitt`, and `laplace` match `scipy.ndimage` and work in N-D.
+Sobel and Prewitt use `[-1, 0, 1]` along `axis`.
+Along every other axis, Sobel uses `[1, 2, 1]` and Prewitt uses `[1, 1, 1]`.
+The result is positive where values increase with index.
+`laplace` sums `[1, -2, 1]` over all axes.
+
+NaNs propagate. For NaN-aware or wider
 derivatives, use `gaussian_filter(order=...)` or pass a kernel to `convolve`.
 
 ## Grey morphology
@@ -31,9 +34,9 @@ match SciPy, including `origin` and boundary modes.
 | `morphological_gradient` | dilation minus erosion |
 | `morphological_laplace` | dilation plus erosion minus twice the input |
 
-NaNs propagate through these operations; use `nanmin_filter` or `nanmax_filter`
+NaNs propagate through these operations. Use `nanmin_filter` or `nanmax_filter`
 directly to omit them. Inputs must be `float32` or `float64`.
 
 "Top-hat" has two meanings. `white_tophat` and `black_tophat` are morphology.
-Astropy's `Tophat2DKernel` is a disk-shaped smoothing kernel; here that is
-`kernels.tophat`, used with `convolve` or as a `footprint`.
+Astropy's `Tophat2DKernel` is a disk-shaped smoothing kernel.
+Use `kernels.tophat` for this kernel, with `convolve` or as a `footprint`.

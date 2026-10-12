@@ -48,20 +48,23 @@ def fixpix(
         NaNs and infinities in `array` are not automatically masked.
     method : {'linear', 'median', 'mean'} or None, optional
         Repair method. `None` (default) selects `'mean'` when `kernel` is
-        given and `'linear'` otherwise. `'linear'` preserves the array semantics
+        given and `'linear'` otherwise.
+
+        `'linear'` preserves the array semantics
         of ``astroimred.fixpix``. `'median'` uses the median of unmasked
-        neighbors and evaluates only masked windows. `'mean'` uses the mean of
-        unmasked neighbors, weighted by `kernel` if given, like Astropy's
-        ``interpolate_replace_nans``.
+        neighbors and evaluates only masked windows.
+
+        `'mean'` uses the mean of unmasked neighbors, like Astropy's
+        ``interpolate_replace_nans``. A supplied `kernel` provides the weights.
     priority : sequence of int or None, optional
-        Linear only: permutation of all axes, highest priority first, used
-        to break ties between equally short masked runs. Default is reversed
-        axis order. Booleans, duplicate axes, and negative axes are rejected.
+        Linear only: permutation of all axes, highest priority first.
+        This breaks ties between equally short masked runs. Default is reversed
+        axis order. The function rejects booleans, duplicate axes, and negative axes.
     size : int or tuple of int or None, optional
         Median and mean: positive window size, scalar or one entry per axis.
         `None` selects `3` unless `footprint` or `kernel` is given.
     footprint : array-like or None, optional
-        Median and mean: window with the array's rank; nonzero entries are used.
+        Median and mean: window with the array's rank. Nonzero entries select samples.
         Pass at most one of `size`, `footprint`, and `kernel`.
     kernel : array-like or None, optional
         Mean only: finite nonnegative weights with the array's rank, for example
@@ -85,8 +88,9 @@ def fixpix(
         constant samples count separately, as in ``nanmedian_filter()``.
     copy : bool, optional
         Default `True` always returns an independent copy. `False` permits
-        returning ``np.asarray(array)`` when the mask is absent or empty;
-        this can alias input storage and retain its layout and read-only flag.
+        returning ``np.asarray(array)`` when the mask is absent or empty.
+        This can alias input storage and retain its layout and read-only flag.
+
         With bad pixels present, repair still returns a new array. This option
         never enables in-place repair.
 
@@ -99,13 +103,14 @@ def fixpix(
 
     Notes
     -----
-    All options are validated even when no pixels need repair. An option that
+    The function validates all options even when no pixels need repair. An option that
     does not apply to the chosen method raises `ValueError` unless it is `None`.
 
     Linear repair selects each pixel's shortest original masked run and
     interpolates the whole run. Crossing runs preserve repeated C-order writes
-    from ``astroimred.fixpix``. Edge runs use their sole good anchor twice;
-    full-axis runs perform no write and do not fall back to another axis.
+    from ``astroimred.fixpix``. Edge runs use their sole good anchor twice.
+    Full-axis runs perform no write and do not use another axis as a fallback.
+
     Arithmetic uses `float64` and casts once to the input dtype, preserving
     legacy nonfinite, signed-zero, and overflow behavior.
 
@@ -114,15 +119,17 @@ def fixpix(
     midpoint and signed-zero ordering as ``nanmedian_filter()``.
 
     Mean repair also uses only original unmasked samples. It divides each
-    weighted sum by the weights of the samples it keeps, so it equals
+    weighted sum by the weights of the samples it keeps. The result equals
     ``nancorrelate()`` of the data with masked pixels set to NaN. For a
     symmetric kernel this is Astropy's ``interpolate_replace_nans`` with an
-    explicit mask. Only masked pixels are evaluated, so its cost scales with
-    the number of bad pixels rather than the image size.
-    Unmasked NaNs are omitted from the averages but stay NaN in the output;
-    include them in `mask` (for example ``mask | np.isnan(array)``) to repair them.
+    explicit mask.
 
-    Input data and mask positions are snapshotted before native repair releases
+    Mean repair evaluates only masked pixels. Its cost scales with the number
+    of bad pixels rather than the image size. The averages omit unmasked NaNs,
+    but those pixels stay NaN in the output.
+    Include them in `mask` (for example ``mask | np.isnan(array)``) to repair them.
+
+    Native repair snapshots input data and mask positions before releasing
     the GIL. Concurrent mutation during normalization or snapshots is unsupported.
     FITS and CCDData metadata remain the caller's responsibility.
     """

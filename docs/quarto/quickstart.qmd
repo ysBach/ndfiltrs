@@ -2,13 +2,12 @@
 title: "Quickstart"
 ---
 
-Choose a NaN policy, inspect boundary effects, and select a local statistic.
-These examples introduce the established [numerical semantics](guides/semantics.qmd)
-using small arrays with no external data.
+Filter a small array in four steps. These examples explain
+[numerical behavior](guides/semantics.qmd) without external data.
 
 ## 1. Install the source build
 
-The first PyPI release is being prepared. Follow the current
+The first PyPI release is not yet available. Follow the current
 [source-build instructions](https://github.com/ysBach/ndfiltrs#source-build),
 including their Rust dependency requirements. The examples require a built
 `ndfiltrs` extension and NumPy.
@@ -39,7 +38,7 @@ assert np.isnan(strict).all()
 ```
 
 Set `ignore_inf=True` to omit infinities as well as NaNs. A finite hot pixel
-still counts as valid; mark known bad pixels yourself.
+still counts as valid. Mark known bad pixels yourself.
 
 ## 3. Inspect the boundary rule
 
@@ -52,8 +51,8 @@ np.testing.assert_array_equal(reflected, [1.0, 2.0, 9.0])
 np.testing.assert_array_equal(padded, [1.0, 2.0, 2.0])
 ```
 
-At the right edge, reflection produces the window `[2, 9, 9]`; constant
-padding produces `[2, 9, 0]`. Their medians differ because the boundary rule
+At the right edge, reflection produces the window `[2, 9, 9]`.
+Constant padding produces `[2, 9, 0]`. Their medians differ because the boundary rule
 changes the samples, even though the input array is identical.
 
 ## 4. Select a statistic
@@ -67,7 +66,7 @@ assert local_median[1] == 2.0
 np.testing.assert_array_equal(finite, [1.0, 2.0, 9.0])
 ```
 
-Both center windows contain `[1, 2, 9]`. The mean is `4`; the median is `2`.
+Both center windows contain `[1, 2, 9]`. The mean is `4`. The median is `2`.
 Choose the statistic for the scientific quantity you intend to estimate.
 These functions produce a filtered array without changing `finite`.
 
@@ -82,5 +81,5 @@ These functions produce a filtered array without changing `finite`.
 Use the [API reference](api/index.qmd) when you are ready to choose a function
 and copy its complete signature.
 
-These snippets are displayed, not executed, by documentation CI. Run them
+Documentation CI displays these snippets but does not execute them. Run them
 against the extension installed in your local environment when editing them.

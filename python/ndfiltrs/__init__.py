@@ -1,4 +1,4 @@
-"""Fast N-dimensional filters for NumPy arrays."""
+"""N-dimensional filters for NumPy arrays."""
 
 from . import kernels
 from ._api import (

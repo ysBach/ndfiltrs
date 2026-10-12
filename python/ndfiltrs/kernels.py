@@ -268,7 +268,8 @@ def box(
     Parameters
     ----------
     size : int or sequence of int
-        Pixel length on each axis. A scalar requires `ndim`; lengths may be even.
+        Pixel length on each axis. A scalar requires `ndim`.
+        Lengths may be even.
     ndim : int, optional
         Number of axes when `size` is scalar.
     normalize : bool, default=True
@@ -320,7 +321,8 @@ def tophat(
     Parameters
     ----------
     radius : float
-        Ball radius in pixels; the boundary is included.
+        Ball radius in pixels. The pixel fraction includes points on the ball
+        boundary.
     ndim : int
         Number of array axes, with axis 0 first.
     oversample : int, default=1
@@ -411,11 +413,13 @@ def gaussian(
         Positive principal-axis standard deviations in pixels. A scalar needs
         `ndim` unless `rotation` supplies it.
     ndim : int, optional
-        Number of array axes; otherwise inferred from a width sequence or rotation.
+        Number of array axes. If omitted, the function infers it from a width
+        sequence or `rotation`.
     rotation : array-like, optional
         Orthogonal matrix whose columns are principal axes in array-axis order.
-        Orthogonality is checked with `numpy.allclose` to allow floating-point
-        round-off. With no matrix, principal axes align with array axes.
+        The function checks orthogonality with `numpy.allclose` to allow
+        floating-point round-off. Without a matrix, principal axes align with
+        array axes.
     radius : int or sequence of int, optional
         Nonnegative support radius per array axis. By default each radius is
         `ceil(truncate * sqrt(Sigma_ii))`, where
@@ -472,20 +476,22 @@ def moffat(
     Parameters
     ----------
     alpha : float or sequence of float
-        Positive core widths in pixels along the principal axes. A scalar is
-        broadcast to every axis; the profile is ``(1 + d**2)**(-beta)`` after
-        scaling each principal coordinate by its core width.
+        Positive core widths in pixels along the principal axes. A scalar
+        applies to every axis. Scale each principal coordinate by its core
+        width. Let `d` be the Euclidean distance of those scaled coordinates.
+        The profile is ``(1 + d**2)**(-beta)``.
     beta : float
         Positive power-law exponent.
     ndim : int, optional
-        Number of array axes; inferred from `rotation` when supplied.
+        Number of array axes. If omitted, the function infers it from
+        `rotation` when supplied.
     rotation : array-like, optional
         Orthogonal matrix whose columns are principal axes in array-axis order.
-        Orthogonality is checked with `numpy.allclose` to allow floating-point
-        round-off.
+        The function checks orthogonality with `numpy.allclose` to allow
+        floating-point round-off.
     radius : int or sequence of int
-        Required nonnegative support radius per array axis; the profile has a
-        heavy tail and no default truncation is assumed.
+        Required nonnegative support radius per array axis. It sets the finite
+        support for this heavy-tailed profile.
     oversample : int, default=1
         Average this many subpixel centers per axis.
     normalize : bool, default=True
@@ -539,14 +545,15 @@ def student_t(
     df : float
         Positive degrees of freedom.
     ndim : int, optional
-        Number of array axes; otherwise inferred from a scale sequence or rotation.
+        Number of array axes. If omitted, the function infers it from a scale
+        sequence or `rotation`.
     rotation : array-like, optional
         Orthogonal matrix whose columns are principal axes in array-axis order.
-        Orthogonality is checked with `numpy.allclose` to allow floating-point
-        round-off.
+        The function checks orthogonality with `numpy.allclose` to allow
+        floating-point round-off.
     radius : int or sequence of int
-        Required nonnegative support radius per array axis; no tail cutoff is
-        assumed.
+        Required nonnegative support radius per array axis. It sets the finite
+        support for this heavy-tailed profile.
     oversample : int, default=1
         Average this many subpixel centers per axis.
     normalize : bool, default=True
@@ -596,12 +603,12 @@ def sample(
     Parameters
     ----------
     function : callable
-        Called as ``function(*offsets)`` with one `float64` array per axis
-        (axis 0 first) holding pixel offsets from the kernel center. The arrays
-        broadcast to the kernel shape; the result must broadcast to it too and
-        be finite.
+        The function calls ``function(*offsets)`` with one `float64` array per
+        axis. Axis 0 comes first. Each array holds pixel offsets from the kernel
+        center. The arrays broadcast to the kernel shape. The result must also
+        broadcast to that shape and contain only finite values.
     radius : int or sequence of int
-        Half-width per axis; the kernel has ``2 * radius + 1`` pixels per axis.
+        Half-width per axis. The kernel has ``2 * radius + 1`` pixels per axis.
         A scalar requires `ndim`.
     ndim : int, optional
         Number of axes when `radius` is scalar.
@@ -609,7 +616,8 @@ def sample(
         Average ``oversample**ndim`` evaluations per pixel, at subpixel
         centers ``(j + 0.5) / oversample - 0.5``.
     normalize : bool, default=True
-        Divide the weights by their sum, which must then be positive.
+        Divide the weights by their sum. The sum must be positive when
+        `normalize=True`.
 
     Returns
     -------
@@ -618,13 +626,14 @@ def sample(
 
     Notes
     -----
-    The function receives coordinate arrays once per subpixel shift, during
-    kernel construction. Filtering never calls it. Identical weights passed
-    to the same filter have the same cost; a dense sampled kernel does not
-    benefit from a specialized separable filter.
-    Astropy 2-D models take `(x, y)` = (axis 1, axis 0), so wrap them as
-    ``sample(lambda y, x: model(x, y), radius=(10, 10))``. Set `normalize=False` for
-    zero-sum kernels such as a Ricker wavelet.
+    Kernel construction calls the function once for each subpixel shift.
+    Filtering never calls it. Identical weights have the same cost for the
+    same filter. A dense sampled kernel does not benefit from a specialized
+    separable filter.
+
+    Astropy 2-D models expect `x` along axis 1 and `y` along axis 0. Pass a
+    model to `sample` as ``sample(lambda y, x: model(x, y), radius=(10, 10))``.
+    Set `normalize=False` for zero-sum kernels such as a Ricker wavelet.
 
     Examples
     --------
