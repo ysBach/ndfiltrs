@@ -47,10 +47,10 @@ def percentile_filter(
     percentile : float
         Percentile from `0` through `100`, inclusive. `50` gives the median.
     size : int or tuple of int, optional
-        Rectangular window size. A scalar broadcasts to every axis; a tuple
+        Rectangular window size. A scalar broadcasts to every axis. A tuple
         has one entry per axis. Default is `3` when `footprint` is `None`.
     footprint : array-like, optional
-        Window with the array's rank; nonzero entries are used. Pass `size`
+        Window with the array's rank. Nonzero entries select samples. Pass `size`
         or `footprint`, not both.
     origin : int or tuple of int, optional
         Window shift per axis, as in `median_filter`. Default is `0`.
@@ -70,7 +70,7 @@ def percentile_filter(
     -----
     Sort each window and interpolate at rank ``(n - 1) * percentile / 100``.
     Endpoints select the minimum or maximum. NaNs propagate locally.
-    Infinities participate; interpolation between opposite infinities gives
+    Infinities participate. Interpolation between opposite infinities gives
     NaN. Finite interpolation uses `float64` and casts once at the end.
     """
     quantile = _finite_real(percentile, "percentile")
@@ -120,10 +120,10 @@ def nanpercentile_filter(
     percentile : float
         Percentile from `0` through `100`, inclusive, with linear interpolation.
     size : int or tuple of int, optional
-        Rectangular window size. A scalar broadcasts to every axis; a tuple
+        Rectangular window size. A scalar broadcasts to every axis. A tuple
         has one entry per axis. Default is `3` when `footprint` is `None`.
     footprint : array-like, optional
-        Window with the array's rank; nonzero entries are used. Pass `size`
+        Window with the array's rank. Nonzero entries select samples. Pass `size`
         or `footprint`, not both.
     origin : int or tuple of int, optional
         Window shift per axis, as in `median_filter`. Default is `0`.
@@ -193,10 +193,10 @@ def mad_filter(
     array : array-like
         Aligned, native-endian `float32` or `float64` input.
     size : int or tuple of int, optional
-        Rectangular window size. A scalar broadcasts to every axis; a tuple
+        Rectangular window size. A scalar broadcasts to every axis. A tuple
         has one entry per axis. Default is `3` when `footprint` is `None`.
     footprint : array-like, optional
-        Window with the array's rank; nonzero entries are used. Pass `size`
+        Window with the array's rank. Nonzero entries select samples. Pass `size`
         or `footprint`, not both.
     origin : int or tuple of int, optional
         Window shift per axis, as in `median_filter`. Default is `0`.
@@ -216,7 +216,7 @@ def mad_filter(
     Notes
     -----
     The statistic is ``scale * median(abs(x - median(x)))`` in each window.
-    NaNs propagate locally. Infinities participate; undefined deviations
+    NaNs propagate locally. Infinities participate. Undefined deviations
     such as ``inf - inf`` produce NaN. Both medians use the average of the
     two central values when their population has even length.
     """
@@ -265,10 +265,10 @@ def nanmad_filter(
     array : array-like
         Aligned, native-endian `float32` or `float64` input.
     size : int or tuple of int, optional
-        Rectangular window size. A scalar broadcasts to every axis; a tuple
+        Rectangular window size. A scalar broadcasts to every axis. A tuple
         has one entry per axis. Default is `3` when `footprint` is `None`.
     footprint : array-like, optional
-        Window with the array's rank; nonzero entries are used. Pass `size`
+        Window with the array's rank. Nonzero entries select samples. Pass `size`
         or `footprint`, not both.
     origin : int or tuple of int, optional
         Window shift per axis, as in `median_filter`. Default is `0`.
@@ -350,10 +350,10 @@ def sigma_clipped_filter(
         Aligned, native-endian `float32` or `float64` input. NaNs and infinities
         are always omitted before clipping.
     size : int or tuple of int, optional
-        Rectangular window size. A scalar broadcasts to every axis; a tuple
+        Rectangular window size. A scalar broadcasts to every axis. A tuple
         has one entry per axis. Default is `3` when `footprint` is `None`.
     footprint : array-like, optional
-        Window with the array's rank; nonzero entries are used. Pass `size`
+        Window with the array's rank. Nonzero entries select samples. Pass `size`
         or `footprint`, not both.
     origin : int or tuple of int, optional
         Window shift per axis, as in `median_filter`. Default is `0`.
@@ -377,13 +377,14 @@ def sigma_clipped_filter(
     statistic : {'mean', 'median', 'mode'}, optional
         Statistic returned after clipping. Default is `'mean'`. `'mode'` with
         `mode_estimator='sex'` and `maxiters=None` gives a SExtractor-like local
-        background: clip at median ± 3 std until stable, then take the mode.
+        background. It clips at median ± 3 std until stable, then takes the mode.
     mode_estimator : {'sex', 'mmm', 'iraf'}, optional
-        Mode formula used when `statistic='mode'`; see `mode_filter`.
+        Mode formula used when `statistic='mode'`. See `mode_filter`.
         Default is `'sex'`.
     pearson : float or None, optional
-        Pearson factor in ``mode = pearson * median - (pearson - 1) * mean``, at
-        least `1` (SExtractor's `BACK_PEARSON`). `None` uses `2.5` for `'sex'` and `3`
+        Pearson factor in ``mode = pearson * median - (pearson - 1) * mean``.
+        It must be at least `1` (SExtractor's `BACK_PEARSON`).
+        `None` uses `2.5` for `'sex'` and `3`
         for `'mmm'` and `'iraf'`.
     mode : str or tuple of str, optional
         Boundary mode per input axis. Default is `'reflect'`.
@@ -532,10 +533,10 @@ def mode_filter(
     array : array-like
         Aligned, native-endian `float32` or `float64` input.
     size : int or tuple of int, optional
-        Rectangular window size. A scalar broadcasts to every axis; a tuple
+        Rectangular window size. A scalar broadcasts to every axis. A tuple
         has one entry per axis. Default is `3` when `footprint` is `None`.
     footprint : array-like, optional
-        Window with the array's rank; nonzero entries are used. Pass `size`
+        Window with the array's rank. Nonzero entries select samples. Pass `size`
         or `footprint`, not both.
     origin : int or tuple of int, optional
         Window shift per axis, as in `median_filter`. Default is `0`.
@@ -548,8 +549,9 @@ def mode_filter(
           ``3 * median - 2 * mean``.
         * `'iraf'`: the mean when it is below the median, otherwise `'mmm'`.
     pearson : float or None, optional
-        Pearson factor in ``mode = pearson * median - (pearson - 1) * mean``, at
-        least `1` (SExtractor's `BACK_PEARSON`). `None` uses `2.5` for `'sex'` and `3`
+        Pearson factor in ``mode = pearson * median - (pearson - 1) * mean``.
+        It must be at least `1` (SExtractor's `BACK_PEARSON`).
+        `None` uses `2.5` for `'sex'` and `3`
         for `'mmm'` and `'iraf'`.
     mode : str or tuple of str, optional
         Boundary mode per input axis. Default is `'reflect'`.
@@ -564,11 +566,13 @@ def mode_filter(
 
     Notes
     -----
-    For `'sex'`, `std` is the population standard deviation (`ddof=0`), and a
-    zero `std` returns the mean, as in SExtractor's `backguess`
-    (`src/back.c`, default `BACK_PEARSON = 2.5`). `'mmm'` and `'iraf'` match
-    astroimred's `sky_fit`. No samples are clipped; for a SExtractor-like
-    background use `sigma_clipped_filter(..., maxiters=None, statistic="mode")`.
+    For `'sex'`, `std` is the population standard deviation (`ddof=0`).
+    A zero `std` returns the mean, as in SExtractor's `backguess`
+    (`src/back.c`, default `BACK_PEARSON = 2.5`).
+    `'mmm'` and `'iraf'` match astroimred's `sky_fit`.
+
+    This function does not clip samples. For a SExtractor-like background,
+    use `sigma_clipped_filter(..., maxiters=None, statistic="mode")`.
     """
     factor = _pearson(mode_estimator, pearson)
     arguments = validate_filter_arguments(
@@ -607,10 +611,10 @@ def biweight_location_filter(
     array : array-like
         Aligned, native-endian `float32` or `float64` input.
     size : int or tuple of int, optional
-        Rectangular window size. A scalar broadcasts to every axis; a tuple
+        Rectangular window size. A scalar broadcasts to every axis. A tuple
         has one entry per axis. Default is `3` when `footprint` is `None`.
     footprint : array-like, optional
-        Window with the array's rank; nonzero entries are used. Pass `size`
+        Window with the array's rank. Nonzero entries select samples. Pass `size`
         or `footprint`, not both.
     origin : int or tuple of int, optional
         Window shift per axis, as in `median_filter`. Default is `0`.
@@ -629,7 +633,8 @@ def biweight_location_filter(
 
     Notes
     -----
-    With `M` the window median and ``u = (x - M) / (c * MAD)``, the result is
+    Let `M` be the window median and ``u = (x - M) / (c * MAD)``.
+    The result is
     ``M + sum((x - M) * (1 - u**2)**2) / sum((1 - u**2)**2)`` over samples with
     ``|u| < 1``. A zero MAD returns `M`. This matches
     ``astropy.stats.biweight_location(M=None)`` up to rounding.
@@ -669,10 +674,10 @@ def biweight_scale_filter(
     array : array-like
         Aligned, native-endian `float32` or `float64` input.
     size : int or tuple of int, optional
-        Rectangular window size. A scalar broadcasts to every axis; a tuple
+        Rectangular window size. A scalar broadcasts to every axis. A tuple
         has one entry per axis. Default is `3` when `footprint` is `None`.
     footprint : array-like, optional
-        Window with the array's rank; nonzero entries are used. Pass `size`
+        Window with the array's rank. Nonzero entries select samples. Pass `size`
         or `footprint`, not both.
     origin : int or tuple of int, optional
         Window shift per axis, as in `median_filter`. Default is `0`.
@@ -694,8 +699,9 @@ def biweight_scale_filter(
 
     Notes
     -----
-    With `M` the window median, ``d = x - M``, ``u = d / (c * MAD)``, and
-    ``w = 1 - u**2``, the result is
+    Let `M` be the window median. Define ``d = x - M``,
+    ``u = d / (c * MAD)``, and ``w = 1 - u**2``.
+    The result is
     ``sqrt(n * sum(d**2 * w**4)) / abs(sum(w * (1 - 5 * u**2)))`` over samples
     with ``|u| < 1``. A zero MAD returns `0`. This matches
     ``astropy.stats.biweight_scale(M=None)`` up to rounding.
@@ -740,10 +746,10 @@ def nanmode_filter(
     array : array-like
         Aligned, native-endian `float32` or `float64` input.
     size : int or tuple of int, optional
-        Rectangular window size. A scalar broadcasts to every axis; a tuple
+        Rectangular window size. A scalar broadcasts to every axis. A tuple
         has one entry per axis. Default is `3` when `footprint` is `None`.
     footprint : array-like, optional
-        Window with the array's rank; nonzero entries are used. Pass `size`
+        Window with the array's rank. Nonzero entries select samples. Pass `size`
         or `footprint`, not both.
     origin : int or tuple of int, optional
         Window shift per axis, as in `median_filter`. Default is `0`.
@@ -756,8 +762,9 @@ def nanmode_filter(
           ``3 * median - 2 * mean``.
         * `'iraf'`: the mean when it is below the median, otherwise `'mmm'`.
     pearson : float or None, optional
-        Pearson factor in ``mode = pearson * median - (pearson - 1) * mean``, at
-        least `1` (SExtractor's `BACK_PEARSON`). `None` uses `2.5` for `'sex'` and `3`
+        Pearson factor in ``mode = pearson * median - (pearson - 1) * mean``.
+        It must be at least `1` (SExtractor's `BACK_PEARSON`).
+        `None` uses `2.5` for `'sex'` and `3`
         for `'mmm'` and `'iraf'`.
     mode : str or tuple of str, optional
         Boundary mode per input axis. Default is `'reflect'`.
@@ -777,11 +784,13 @@ def nanmode_filter(
 
     Notes
     -----
-    For `'sex'`, `std` is the population standard deviation (`ddof=0`), and a
-    zero `std` returns the mean, as in SExtractor's `backguess`
-    (`src/back.c`, default `BACK_PEARSON = 2.5`). `'mmm'` and `'iraf'` match
-    astroimred's `sky_fit`. No samples are clipped; for a SExtractor-like
-    background use `sigma_clipped_filter(..., maxiters=None, statistic="mode")`.
+    For `'sex'`, `std` is the population standard deviation (`ddof=0`).
+    A zero `std` returns the mean, as in SExtractor's `backguess`
+    (`src/back.c`, default `BACK_PEARSON = 2.5`).
+    `'mmm'` and `'iraf'` match astroimred's `sky_fit`.
+
+    This function does not clip samples. For a SExtractor-like background,
+    use `sigma_clipped_filter(..., maxiters=None, statistic="mode")`.
     """
     factor = _pearson(mode_estimator, pearson)
     arguments = validate_filter_arguments(
@@ -823,10 +832,10 @@ def nanbiweight_location_filter(
     array : array-like
         Aligned, native-endian `float32` or `float64` input.
     size : int or tuple of int, optional
-        Rectangular window size. A scalar broadcasts to every axis; a tuple
+        Rectangular window size. A scalar broadcasts to every axis. A tuple
         has one entry per axis. Default is `3` when `footprint` is `None`.
     footprint : array-like, optional
-        Window with the array's rank; nonzero entries are used. Pass `size`
+        Window with the array's rank. Nonzero entries select samples. Pass `size`
         or `footprint`, not both.
     origin : int or tuple of int, optional
         Window shift per axis, as in `median_filter`. Default is `0`.
@@ -850,7 +859,8 @@ def nanbiweight_location_filter(
 
     Notes
     -----
-    With `M` the window median and ``u = (x - M) / (c * MAD)``, the result is
+    Let `M` be the window median and ``u = (x - M) / (c * MAD)``.
+    The result is
     ``M + sum((x - M) * (1 - u**2)**2) / sum((1 - u**2)**2)`` over samples with
     ``|u| < 1``. A zero MAD returns `M`. This matches
     ``astropy.stats.biweight_location(M=None)`` up to rounding.
@@ -893,10 +903,10 @@ def nanbiweight_scale_filter(
     array : array-like
         Aligned, native-endian `float32` or `float64` input.
     size : int or tuple of int, optional
-        Rectangular window size. A scalar broadcasts to every axis; a tuple
+        Rectangular window size. A scalar broadcasts to every axis. A tuple
         has one entry per axis. Default is `3` when `footprint` is `None`.
     footprint : array-like, optional
-        Window with the array's rank; nonzero entries are used. Pass `size`
+        Window with the array's rank. Nonzero entries select samples. Pass `size`
         or `footprint`, not both.
     origin : int or tuple of int, optional
         Window shift per axis, as in `median_filter`. Default is `0`.
@@ -923,8 +933,9 @@ def nanbiweight_scale_filter(
 
     Notes
     -----
-    With `M` the window median, ``d = x - M``, ``u = d / (c * MAD)``, and
-    ``w = 1 - u**2``, the result is
+    Let `M` be the window median. Define ``d = x - M``,
+    ``u = d / (c * MAD)``, and ``w = 1 - u**2``.
+    The result is
     ``sqrt(n * sum(d**2 * w**4)) / abs(sum(w * (1 - 5 * u**2)))`` over samples
     with ``|u| < 1``. A zero MAD returns `0`. This matches
     ``astropy.stats.biweight_scale(M=None)`` up to rounding.

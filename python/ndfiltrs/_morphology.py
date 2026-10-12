@@ -1,6 +1,6 @@
 """Grey-scale morphology with flat structuring elements.
 
-Erosion is `min_filter`; the functions here build on it and `max_filter`.
+Erosion is `min_filter`. The functions here use it and `max_filter`.
 """
 
 from __future__ import annotations
@@ -32,8 +32,8 @@ def grey_dilation(
     size : int or tuple of int, optional
         Rectangular window size. Default is `3` when `footprint` is `None`.
     footprint : array-like, optional
-        Flat structuring element with the array's rank; nonzero entries are
-        used. Pass `size` or `footprint`, not both.
+        Flat structuring element with the array's rank. Nonzero entries select
+        samples. Pass `size` or `footprint`, not both.
     mode : {'reflect', 'constant', 'nearest', 'mirror', 'wrap'} or tuple, optional
         Boundary mode per axis. Default is `'reflect'`.
     cval : float, optional
@@ -49,8 +49,9 @@ def grey_dilation(
     Notes
     -----
     Erosion needs no separate function: it is `min_filter`. This function
-    matches `scipy.ndimage.grey_dilation` for flat structuring elements: the
-    footprint is reflected and the origin negated (minus one on even axes).
+    matches `scipy.ndimage.grey_dilation` for flat structuring elements.
+    It reflects the footprint and negates the origin, then subtracts one
+    on even axes.
     NaNs propagate.
     """
     value = validate_array(array)
@@ -83,8 +84,8 @@ def grey_opening(
     size : int or tuple of int, optional
         Rectangular window size. Default is `3` when `footprint` is `None`.
     footprint : array-like, optional
-        Flat structuring element with the array's rank; nonzero entries are
-        used. Pass `size` or `footprint`, not both.
+        Flat structuring element with the array's rank. Nonzero entries select
+        samples. Pass `size` or `footprint`, not both.
     mode : {'reflect', 'constant', 'nearest', 'mirror', 'wrap'} or tuple, optional
         Boundary mode per axis. Default is `'reflect'`.
     cval : float, optional
@@ -131,8 +132,8 @@ def grey_closing(
     size : int or tuple of int, optional
         Rectangular window size. Default is `3` when `footprint` is `None`.
     footprint : array-like, optional
-        Flat structuring element with the array's rank; nonzero entries are
-        used. Pass `size` or `footprint`, not both.
+        Flat structuring element with the array's rank. Nonzero entries select
+        samples. Pass `size` or `footprint`, not both.
     mode : {'reflect', 'constant', 'nearest', 'mirror', 'wrap'} or tuple, optional
         Boundary mode per axis. Default is `'reflect'`.
     cval : float, optional
@@ -179,8 +180,8 @@ def white_tophat(
     size : int or tuple of int, optional
         Rectangular window size. Default is `3` when `footprint` is `None`.
     footprint : array-like, optional
-        Flat structuring element with the array's rank; nonzero entries are
-        used. Pass `size` or `footprint`, not both.
+        Flat structuring element with the array's rank. Nonzero entries select
+        samples. Pass `size` or `footprint`, not both.
     mode : {'reflect', 'constant', 'nearest', 'mirror', 'wrap'} or tuple, optional
         Boundary mode per axis. Default is `'reflect'`.
     cval : float, optional
@@ -196,8 +197,8 @@ def white_tophat(
     Notes
     -----
     Useful for removing a smooth background under compact bright sources.
-    Opposite infinities give NaN. This is morphology; for the disk-shaped
-    smoothing kernel Astropy calls a top-hat, use `kernels.tophat`.
+    Opposite infinities give NaN. This function performs morphology.
+    For the disk-shaped smoothing kernel Astropy calls a top-hat, use `kernels.tophat`.
     """
     value = validate_array(array)
     return value - grey_opening(
@@ -223,8 +224,8 @@ def black_tophat(
     size : int or tuple of int, optional
         Rectangular window size. Default is `3` when `footprint` is `None`.
     footprint : array-like, optional
-        Flat structuring element with the array's rank; nonzero entries are
-        used. Pass `size` or `footprint`, not both.
+        Flat structuring element with the array's rank. Nonzero entries select
+        samples. Pass `size` or `footprint`, not both.
     mode : {'reflect', 'constant', 'nearest', 'mirror', 'wrap'} or tuple, optional
         Boundary mode per axis. Default is `'reflect'`.
     cval : float, optional
@@ -268,8 +269,8 @@ def morphological_gradient(
     size : int or tuple of int, optional
         Rectangular window size. Default is `3` when `footprint` is `None`.
     footprint : array-like, optional
-        Flat structuring element with the array's rank; nonzero entries are
-        used. Pass `size` or `footprint`, not both.
+        Flat structuring element with the array's rank. Nonzero entries select
+        samples. Pass `size` or `footprint`, not both.
     mode : {'reflect', 'constant', 'nearest', 'mirror', 'wrap'} or tuple, optional
         Boundary mode per axis. Default is `'reflect'`.
     cval : float, optional
@@ -312,8 +313,8 @@ def morphological_laplace(
     size : int or tuple of int, optional
         Rectangular window size. Default is `3` when `footprint` is `None`.
     footprint : array-like, optional
-        Flat structuring element with the array's rank; nonzero entries are
-        used. Pass `size` or `footprint`, not both.
+        Flat structuring element with the array's rank. Nonzero entries select
+        samples. Pass `size` or `footprint`, not both.
     mode : {'reflect', 'constant', 'nearest', 'mirror', 'wrap'} or tuple, optional
         Boundary mode per axis. Default is `'reflect'`.
     cval : float, optional

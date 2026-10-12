@@ -75,19 +75,19 @@ def sobel(
 
     Notes
     -----
-    The filter applies an N-dimensional correlation kernel formed by the outer
-    product of the central difference ``[-1, 0, 1]`` along `axis` and the
-    smoothing filter ``[1, 2, 1]`` along every other axis. For 1-D inputs, this
-    reduces to ``[-1, 0, 1]``.
+    The filter applies an N-dimensional correlation kernel formed by an outer
+    product. Along `axis`, the factor is the central difference ``[-1, 0, 1]``.
+    Every other axis uses the smoothing filter ``[1, 2, 1]``.
+    For 1-D inputs, this reduces to ``[-1, 0, 1]``.
 
     The sign convention yields positive values where sample values increase with
     array index (gradient pointing in the positive coordinate direction).
 
-    Sample NaNs propagate according to standard correlation: zero kernel
-    coefficients omit their corresponding sample, while nonzero coefficients
-    propagate NaNs. There are no NaN-aware variants; use `nanconvolve` or
-    `nancorrelate` with explicit kernels if normalized missing-data handling
-    is required.
+    Sample NaNs follow standard correlation rules. Zero kernel coefficients
+    omit their corresponding sample. Nonzero coefficients propagate NaNs.
+
+    There are no NaN-aware variants. Use `nanconvolve` or `nancorrelate` with
+    explicit kernels if normalized missing-data handling is required.
     """
     valid_array = validate_array(array)
     norm_axis = _normalize_axis(axis, valid_array.ndim)
@@ -123,19 +123,19 @@ def prewitt(
 
     Notes
     -----
-    The filter applies an N-dimensional correlation kernel formed by the outer
-    product of the central difference ``[-1, 0, 1]`` along `axis` and the
-    smoothing filter ``[1, 1, 1]`` along every other axis. For 1-D inputs, this
-    reduces to ``[-1, 0, 1]``.
+    The filter applies an N-dimensional correlation kernel formed by an outer
+    product. Along `axis`, the factor is the central difference ``[-1, 0, 1]``.
+    Every other axis uses the smoothing filter ``[1, 1, 1]``.
+    For 1-D inputs, this reduces to ``[-1, 0, 1]``.
 
     The sign convention yields positive values where sample values increase with
     array index (gradient pointing in the positive coordinate direction).
 
-    Sample NaNs propagate according to standard correlation: zero kernel
-    coefficients omit their corresponding sample, while nonzero coefficients
-    propagate NaNs. There are no NaN-aware variants; use `nanconvolve` or
-    `nancorrelate` with explicit kernels if normalized missing-data handling
-    is required.
+    Sample NaNs follow standard correlation rules. Zero kernel coefficients
+    omit their corresponding sample. Nonzero coefficients propagate NaNs.
+
+    There are no NaN-aware variants. Use `nanconvolve` or `nancorrelate` with
+    explicit kernels if normalized missing-data handling is required.
     """
     valid_array = validate_array(array)
     norm_axis = _normalize_axis(axis, valid_array.ndim)
@@ -168,18 +168,18 @@ def laplace(
 
     Notes
     -----
-    The filter applies an N-dimensional correlation kernel formed by summing the
-    discrete second-derivative operator ``[1, -2, 1]`` along each axis. For 1-D
-    inputs, this reduces to ``[1, -2, 1]``.
+    The filter applies an N-dimensional correlation kernel. It forms this kernel
+    by summing the discrete second-derivative operator ``[1, -2, 1]`` along each
+    axis. For 1-D inputs, this reduces to ``[1, -2, 1]``.
 
     The sign convention matches the standard positive discrete second difference
     ``f[i-1] - 2*f[i] + f[i+1]`` along each axis.
 
-    Sample NaNs propagate according to standard correlation: zero kernel
-    coefficients omit their corresponding sample, while nonzero coefficients
-    propagate NaNs. There are no NaN-aware variants; use `nanconvolve` or
-    `nancorrelate` with explicit kernels if normalized missing-data handling
-    is required.
+    Sample NaNs follow standard correlation rules. Zero kernel coefficients
+    omit their corresponding sample. Nonzero coefficients propagate NaNs.
+
+    There are no NaN-aware variants. Use `nanconvolve` or `nancorrelate` with
+    explicit kernels if normalized missing-data handling is required.
     """
     valid_array = validate_array(array)
     kernel = _build_laplace_kernel(valid_array.ndim)

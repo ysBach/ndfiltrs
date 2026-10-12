@@ -6,7 +6,7 @@ title: "ndfiltrs"
 Gaussian filters, and masked-pixel repair for NumPy arrays.
 
 Start with the [Quickstart](quickstart.qmd) for installation and small examples.
-The [Guides](guides/index.qmd) explain each operation; the
+The [Guides](guides/index.qmd) explain each operation. The
 [API reference](api/index.qmd) lists signatures and parameters.
 
 ## Small example
@@ -25,18 +25,18 @@ to every window containing it. Choose the policy explicitly.
 ## Input contract
 
 Use aligned, native-endian `float32` or `float64` arrays with at least one
-dimension. Rectangular window sizes may be positive even or odd integers;
-separable mean filtering requires odd sizes. Boundary modes are `reflect`,
+dimension. Rectangular window sizes may be positive even or odd integers.
+Separable mean filtering requires odd sizes. Boundary modes are `reflect`,
 `constant`, `nearest`, `mirror`, and `wrap`.
 
-These filters have their own documented contracts; SciPy functions may accept
+These filters have their own documented rules. SciPy functions may accept
 different arguments or use different numerical algorithms.
 
 ## Version and build scope
 
 This site follows the repository's **main branch**. It can describe changes
-that are not yet on PyPI. API pages are generated from Python source
-docstrings on every documentation build.
+that are not yet on PyPI. Each documentation build generates API pages from
+Python docstrings.
 
 The examples are static snippets: documentation CI does not run them or build
 the native extension. Run them against your installed extension to check results.

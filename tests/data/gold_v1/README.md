@@ -2,9 +2,13 @@
 
 `scene.npz` is the canonical numeric fixture, not a screenshot. Its 256 x 320
 main image is a synthetic astronomical scene, with 14 arrays and a SHA-256
-manifest. Keep v1 stable: change scientific content by creating v2, not by
-regenerating this file during tests. Original data are distributed under the
-repository's MIT license and contain no downloaded observation or personal data.
+manifest.
+
+Keep v1 stable. Create v2 for changes to scientific content.
+Do not regenerate this file during tests.
+
+The original data use the repository's MIT license.
+They contain no downloaded observation or personal data.
 
 ## Contents
 
@@ -22,11 +26,11 @@ pixels in the observed images are marked. Unmasked values equal `clean`
 bit-for-bit. `model`, `clean`, and `noise` are finite little-endian float64.
 Cast inputs explicitly to float32 for dtype comparisons.
 
-Coordinates are zero-based `(y, x)`, with y increasing downward. The model is
-sampled at pixel centers; Gaussian amplitudes are peak sample units, not
-integrated source fluxes. The noise model is an illustrative Gaussian
-approximation, not a calibrated detector model. All parameters and seeds are
-recorded in `manifest.json`.
+Coordinates are zero-based `(y, x)`, with y increasing downward.
+The model samples pixel centers. Gaussian amplitudes are peak sample units,
+not integrated source fluxes. The noise model is an illustrative Gaussian
+approximation, not a calibrated detector model.
+`manifest.json` records all parameters and seeds.
 
 ## Use
 
@@ -49,17 +53,20 @@ repaired = nf.fixpix(
 `model` is the noiseless truth and `clean` is the original noisy realization.
 Neither is an exact expected result for interpolation or filtering. Especially
 near source peaks, steps, and large missing regions, legitimate repair methods
-have bias or insufficient support. The regression tests use independent
-algorithmic references (including exact rational means and variances,
-high-precision standard deviations, and total-order extrema) and exact
-flat/ramp controls instead of requiring perfect reconstruction.
+have bias or insufficient support.
+
+The regression tests use independent algorithmic references and exact flat/ramp
+controls. References include exact rational means and variances, high-precision
+standard deviations, and total-order extrema. Tests do not require perfect
+reconstruction.
 
 ```bash
 uv run --no-sync pytest -q tests/test_gold_image.py tests/test_statistics.py
 uv run --no-sync python scripts/evaluate_gold_image.py --output /tmp/gold-report.json
 ```
 
-For the shared environment, activate it and add `--active`; never synchronize it.
+For the shared environment, activate it first. Add `--active` to the commands.
+Never synchronize that environment.
 The report gives resolved/unresolved counts, bias and RMSE against both truth
 layers, plus public-call timings. Error metrics are conditional on resolved
 pixels: compare coverage as well. These are diagnostics, without empirical
@@ -74,7 +81,7 @@ uv run --no-sync python scripts/preview_gold_image.py
 ```
 
 Generation needs only NumPy. Preview additionally needs Pillow. The PNG is a
-contact sheet with a common asinh display stretch; the NPZ retains all original
+contact sheet with a common asinh display stretch. The NPZ retains all original
 values. [`docs/images/gold-v1.png`](../../../docs/images/gold-v1.png) is only for
 inspection, not a numerical test input.
 
