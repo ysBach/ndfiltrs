@@ -6,7 +6,7 @@ the source distribution; the commands below generate fresh reports.
 ## Sortnet and boxcar methods
 
 `benchmark_algorithms` evaluates `median_filter(method="sortnet")` and
-`mean_filter(method="boxcar")`. The Python filter defaults are unchanged.
+`mean_filter(method="boxcar")`. The default method is `direct`.
 Each timed public call includes normal argument validation, the input
 snapshot, allocation, and native execution.
 
@@ -16,11 +16,9 @@ OMP_NUM_THREADS=1 OMP_DYNAMIC=FALSE OPENBLAS_NUM_THREADS=1 RAYON_NUM_THREADS=1 u
 OMP_NUM_THREADS=4 OMP_DYNAMIC=FALSE OPENBLAS_NUM_THREADS=1 RAYON_NUM_THREADS=4 uv run --no-sync python -m benchmarks.benchmark_algorithms --repeats 7 --output /tmp/algorithms-threads4.json
 ```
 
-Run these commands sequentially, with other CPU-heavy work stopped. Add
-`--baseline /path/to/previous/ndfiltrs` for a trusted installed snapshot containing
-the original native `median_network` and `mean_rolling` candidates in the same
-interpreter. `--quick --preflight-only` checks a smaller matrix without
-timing. Dependencies are the project environment plus SciPy and Astro-SCRAPPY.
+Run these commands sequentially, with other CPU-heavy work stopped.
+`--quick --preflight-only` checks a smaller matrix without timing.
+Dependencies are the project environment plus SciPy and Astro-SCRAPPY.
 
 The 30-case matrix covers float32/float64 and 1-D/2-D/3-D. It includes 3/5/7
 small medians, 15/31 large medians, and boxcar widths up to 127. Median results
@@ -99,7 +97,7 @@ before timing. It records seven raw samples per implementation by default,
 alternates call order, and covers 72 finite contiguous-array cases across
 1-D/2-D/3-D and both floating dtypes. NumPy sliding-window padding is timed.
 This does not establish performance for NaN omission, other layouts, or IRAF.
-See the [measured results](../docs/benchmarks.md#matched-scipy-and-numpy-calls).
+See the [measured results](../docs/benchmarks.md).
 
 Add `--baseline /path/to/previous/ndfiltrs` to compare a trusted prior installed
 package in the same interpreter and NumPy environment. The script requires

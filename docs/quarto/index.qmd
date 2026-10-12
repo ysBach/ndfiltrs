@@ -1,23 +1,13 @@
 ---
-title: "Filter arrays with explicit numerical policies"
+title: "ndfiltrs"
 ---
 
 `ndfiltrs` provides Rust-backed neighborhood statistics, convolution,
 Gaussian filters, and masked-pixel repair for NumPy arrays.
 
-**Start with the [quickstart](quickstart.qmd).** It takes four short steps
-from installation to a first result. Use the [guide overview](guides/index.qmd)
-to choose a task, then the [API reference](api/index.qmd) for exact signatures.
-
-## Choose a path
-
-| Your task | Read next | What changes |
-| --- | --- |
-| Estimate a local median, mean, range, or scatter | [Neighborhood statistics](guides/semantics.qmd) | Every output position receives a neighborhood statistic. |
-| Check measured cost and limits | [Benchmark evidence](guides/benchmarks.qmd) | Recorded measurements show cost and scope. |
-
-For weighted kernels, Gaussian smoothing, or masked-pixel repair, continue
-with the [additional filtering guides](guides/index.qmd#more-operations).
+Start with the [Quickstart](quickstart.qmd) for installation and small examples.
+The [Guides](guides/index.qmd) explain each operation; the
+[API reference](api/index.qmd) lists signatures and parameters.
 
 ## Small example
 
@@ -35,8 +25,9 @@ to every window containing it. Choose the policy explicitly.
 ## Input contract
 
 Use aligned, native-endian `float32` or `float64` arrays with at least one
-dimension. Statistics use positive odd rectangular windows. Boundary modes
-are `reflect`, `constant`, `nearest`, `mirror`, and `wrap`.
+dimension. Rectangular window sizes may be positive even or odd integers;
+separable mean filtering requires odd sizes. Boundary modes are `reflect`,
+`constant`, `nearest`, `mirror`, and `wrap`.
 
 These filters have their own documented contracts; SciPy functions may accept
 different arguments or use different numerical algorithms.
@@ -48,5 +39,4 @@ that are not yet on PyPI. API pages are generated from Python source
 docstrings on every documentation build.
 
 The examples are static snippets: documentation CI does not run them or build
-the native extension. See [contributing](contributing.qmd) for the reason,
-local validation, and automatic publication.
+the native extension. Run them against your installed extension to check results.

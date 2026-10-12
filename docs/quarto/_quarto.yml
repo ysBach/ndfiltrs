@@ -10,6 +10,7 @@ project:
 
 metadata-files:
   - api/_sidebar.yml
+  - api/_navbar.yml
 
 website:
   title: ndfiltrs
@@ -19,23 +20,7 @@ website:
   search: true
   page-navigation: true
   navbar:
-    left:
-      - href: index.qmd
-        text: Home
-      - href: quickstart.qmd
-        text: Start here
-      - text: Guides
-        menu:
-          - href: guides/semantics.qmd
-            text: Neighborhood statistics
-          - href: guides/benchmarks.qmd
-            text: Benchmark evidence
-          - href: guides/index.qmd
-            text: More filtering guides
-      - href: api/index.qmd
-        text: API reference
-      - href: contributing.qmd
-        text: Contributor guide
+    # The staging script derives left-hand menus from guides and quartodoc.
     right:
       - icon: github
         href: https://github.com/ysBach/ndfiltrs

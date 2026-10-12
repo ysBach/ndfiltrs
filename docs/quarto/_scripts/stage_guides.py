@@ -2,11 +2,14 @@
 
 from __future__ import annotations
 
+import argparse
 import json
 import re
 import shutil
 from pathlib import Path
 from urllib.parse import urlsplit
+
+import yaml
 
 REPOSITORY = Path(__file__).resolve().parents[3]
 SITE = REPOSITORY / "docs" / "quarto"
@@ -20,40 +23,10 @@ GUIDES = (
     "benchmarks",
 )
 GITHUB = "https://github.com/ysBach/ndfiltrs/blob/main/"
-INTRODUCTIONS = {
-    "semantics": (
-        "**When to use this guide:** choose a neighborhood statistic when you "
-        "need a value or scatter estimate at every output position."
-    ),
-    "convolution": (
-        "**When to use this guide:** choose convolution for weighted sums, "
-        "weighted smoothing, or Gaussian derivatives."
-    ),
-    "kernels": (
-        "**When to use this guide:** build Gaussian, Moffat, Student-t, box, "
-        "top-hat, or ring weights, or a disk or annulus footprint."
-    ),
-    "morphology": (
-        "**When to use this guide:** find edges or remove compact features "
-        "with Sobel, Laplace, or grey morphology."
-    ),
-    "robust": (
-        "**When to use this guide:** choose local percentiles, robust scatter, "
-        "or iterative outlier rejection before estimating a mean or median."
-    ),
-    "fixpix": (
-        "**When to use this guide:** choose masked-pixel repair when known bad "
-        "positions may change while unmasked samples must stay unchanged."
-    ),
-    "benchmarks": (
-        "**When to use this guide:** check these measurements before making a "
-        "performance claim or sizing a production workload."
-    ),
-}
 
 
 def main() -> None:
-    """Build guide pages and copy the reference image.
+    """Stage guides and copy the reference image.
 
     Raises
     ------
@@ -68,7 +41,6 @@ def main() -> None:
     output = SITE / "guides"
     output.mkdir(parents=True, exist_ok=True)
     for source, destination in destinations.items():
-        name = source.stem
         heading, body = source.read_text(encoding="utf-8").split("\n", 1)
         if not heading.startswith("# "):
             raise ValueError(f"Expected one leading H1 title in {source}")
@@ -92,11 +64,11 @@ def main() -> None:
 
         body = re.sub(r"\]\(([^)]+)\)", rewrite_link, body)
         title = json.dumps(heading[2:])
-        introduction = INTRODUCTIONS[name]
         (output / destination).write_text(
-            f"---\ntitle: {title}\n---\n{introduction}\n\n{body}",
+            f"---\ntitle: {title}\n---\n{body}",
             encoding="utf-8",
         )
+
     assets = SITE / "assets"
     assets.mkdir(parents=True, exist_ok=True)
     shutil.copyfile(
@@ -104,5 +76,65 @@ def main() -> None:
     )
 
 
+def stage_navigation() -> None:
+    """Expose the guides and generated API pages in the navbar.
+
+    Run after quartodoc has generated the API pages and sidebar.
+
+    Raises
+    ------
+    ValueError
+        An API section uses a non-string page entry.
+    FileNotFoundError
+        A navigation target has not been generated.
+    """
+    config = yaml.safe_load((SITE / "_quarto.yml").read_text(encoding="utf-8"))
+    api = config["quartodoc"]
+    api_dir = api["dir"]
+    api_menu = [{"href": f"{api_dir}/index.qmd"}]
+    for section in api["sections"]:
+        api_menu.append({"text": section["title"]})
+        for name in section["contents"]:
+            if not isinstance(name, str):
+                raise ValueError("API navigation requires named quartodoc pages")
+            api_menu.append({"href": f"{api_dir}/{name}.qmd"})
+
+    # Quarto resolves href-only labels from the destination title. In particular,
+    # API filenames retain module prefixes, while short page titles need not.
+    navigation = {
+        "website": {
+            "navbar": {
+                "left": [
+                    {"href": "index.qmd"},
+                    {"href": "quickstart.qmd"},
+                    {
+                        "text": "Guides",
+                        "menu": [{"href": "guides/index.qmd"}]
+                        + [{"href": f"guides/{name}.qmd"} for name in GUIDES],
+                    },
+                    {"text": "API", "menu": api_menu},
+                ]
+            }
+        }
+    }
+    for entry in navigation["website"]["navbar"]["left"]:
+        for link in entry.get("menu", [entry]):
+            if "href" in link and not (SITE / link["href"]).is_file():
+                raise FileNotFoundError(f"Missing navigation target: {link['href']}")
+    api_output = SITE / api_dir
+    (api_output / "_navbar.yml").write_text(
+        yaml.safe_dump(navigation, sort_keys=False), encoding="utf-8"
+    )
+
+
 if __name__ == "__main__":
-    main()
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument(
+        "--navigation-only",
+        action="store_true",
+        help="Generate navbar metadata after quartodoc has built the API pages.",
+    )
+    if parser.parse_args().navigation_only:
+        stage_navigation()
+    else:
+        main()

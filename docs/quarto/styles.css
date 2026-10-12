@@ -10,3 +10,17 @@ pre {
 .doc-section dt {
   margin-top: 0.8rem;
 }
+
+/* Keep every API link reachable on short and narrow screens. */
+.navbar .dropdown-menu {
+  max-height: 70vh;
+  max-height: 70dvh;
+  overflow-y: auto;
+  max-width: calc(100vw - 2rem);
+}
+
+.navbar .dropdown-item,
+.navbar .dropdown-header {
+  white-space: normal;
+  overflow-wrap: anywhere;
+}

@@ -76,8 +76,8 @@ These functions produce a filtered array without changing `finite`.
 | Next question | Read |
 | --- | --- |
 | How do boundaries, NaNs, and local statistics behave? | [Neighborhood-statistic semantics](guides/semantics.qmd) |
-| What has actually been measured? | [Benchmark evidence](guides/benchmarks.qmd) |
-| What about weighted kernels or masked-pixel repair? | [More operations](guides/index.qmd#more-operations) |
+| What has actually been measured? | [Benchmarks](guides/benchmarks.qmd) |
+| What about weighted kernels or masked-pixel repair? | [Guides](guides/index.qmd) |
 
 Use the [API reference](api/index.qmd) when you are ready to choose a function
 and copy its complete signature.

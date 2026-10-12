@@ -36,6 +36,8 @@ jobs:
           version: "1.9.37"
       - name: Generate API and render site
         run: make docs-build
+      - name: Check rendered navigation
+        run: .venv-docs/bin/python -m pytest -q tests/test_docs_navigation.py
       - name: Configure Pages
         if: >-
           github.repository == 'ysBach/ndfiltrs' &&

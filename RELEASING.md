@@ -7,8 +7,8 @@ it may call the existing `ci.yml` for tests. Build/test commands vary by package
 | Package | Build | Registries |
 | --- | --- | --- |
 | ndfiltrs | Maturin; platform wheels + sdist | PyPI |
-| imcombiners / reducers | Maturin; platform wheels + sdist | PyPI + crates.io |
-| astroimred | uv_build; pure-Python wheel + sdist | PyPI |
+| [imcombiners](https://github.com/ysBach/imcombiners) / [reducers](https://github.com/ysBach/reducers) | Maturin; platform wheels + sdist | PyPI + crates.io |
+| [astroimred](https://github.com/ysBach/astroimred) | uv_build; pure-Python wheel + sdist | PyPI |
 
 Shared rules: check versions, use published dependencies, test built artifacts,
 use trusted publishing, and make `workflow_dispatch` build-only even on tags.
@@ -45,7 +45,7 @@ This is the chosen convention; sibling repositories still need to adopt it.
 
 3. Set **Settings → Pages → Source** to **GitHub Actions** before the first
    push to `main`; otherwise the Docs deploy job fails. Details:
-   [docs/quarto/contributing.qmd](docs/quarto/contributing.qmd).
+   [Build the documentation](README.md#build-the-documentation).
 
    Push only the reviewed branch. Do not use `--all` or `--mirror`: local backup
    branches may contain files that are intentionally absent from the public history.
@@ -57,7 +57,8 @@ This is the chosen convention; sibling repositories still need to adopt it.
 ## Each release
 
 1. Keep dependencies on published registry versions. The build pins
-   `reducers 0.4.0` without a local path override. After dependency changes,
+   [reducers 0.4.0](https://crates.io/crates/reducers/0.4.0) without a local path
+   override. After dependency changes,
    update `Cargo.lock`, then regenerate notices:
 
    ```sh
