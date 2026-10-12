@@ -7,27 +7,18 @@ NumPy, implemented in Rust.
 
 ### Performance
 
-- Added `method="sortnet"` to median filters and `method="boxcar"` to mean filters.
-  Previously every median used per-window selection and every boxcar rescanned
-  its window or axis support; the new methods vectorize exact selection or reuse
-  exact removable sums. For example, `nanmean_filter(x, 63, method="boxcar")`
-  omits NaNs without allowing them to contaminate later windows. Boxcar means
-  round once to the output dtype and may differ in the last bits from direct
-  compensated sums. Public defaults are unchanged; slower cases remain in
-  the published benchmarks.
-- `mean_filter` and `nanmean_filter` previously buffered every window before
-  averaging; now they accumulate during traversal and buffer only for overflow
-  recovery, preserving summation order and nonfinite-value rules.
-- Weighted filters previously remapped every tap and buffered every finite
-  pair; interior pixels now use precomputed offsets and streaming accumulation.
-  Separable mean/Gaussian passes share the same compensated accumulator.
-- `nanmin_filter(..., min_count=1)` and `nanmax_filter(..., min_count=1)`
-  previously maintained redundant count arrays; empty-neighborhood state now
-  supplies that information. Larger `min_count` values still track exact counts.
-- Before/after benchmarks now require bitwise agreement with the prior wheel.
-  Astro-SCRAPPY comparisons separate exact medians from its row/column
-  approximation and disclose different border handling. See
-  [timings and remaining limits](docs/benchmarks.md).
+- Median filters offer exact per-window selection (`method="direct"`) and
+  vectorized selection networks (`method="sortnet"`). Direct selection is the
+  default; the faster choice depends on the input and window.
+- Mean filters offer compensated direct sums, axis-by-axis filtering, and exact
+  running sums (`method="boxcar"`). Boxcar rounds once to the output dtype and
+  may differ in the last bits from the other methods. For example,
+  `nanmean_filter(x, 63, method="boxcar")` skips NaNs without contaminating
+  later windows.
+- Weighted filters share compensated accumulation; rectangular min/max filters
+  use sliding extrema.
+- [Benchmarks](docs/benchmarks.md) compare shipped methods with SciPy and
+  Astro-SCRAPPY, including slower cases and differences in border handling.
 
 ### Common behavior
 
@@ -74,7 +65,8 @@ NumPy, implemented in Rust.
 ### Pixel repair
 
 - `fixpix` fills masked pixels in N-D images. The default linear method
-  matches `astroimred.fixpix`; `method="median"` uses the median of unmasked
+  matches [astroimred's `fixpix`](https://github.com/ysBach/astroimred/blob/fb70cae872406f907175e3b47d497ffe14b8c238/src/astroimred/imutil/pixels.py);
+  `method="median"` uses the median of unmasked
   neighbors (any `footprint`); `method="mean"` uses their mean, optionally
   weighted by a `kernel` (passing `kernel` alone selects it), like Astropy's
   `interpolate_replace_nans`.

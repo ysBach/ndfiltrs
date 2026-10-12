@@ -105,7 +105,8 @@ others; SExtractor's documentation notes that `3.5` is often more accurate.
 For `'sex'`, `std` is the population standard deviation and a zero `std` returns
 the mean. This is `backguess` in SExtractor's `src/back.c` (with the default
 `BACK_PEARSON = 2.5`); SExtractor also clips at median ± 3 std until the std
-stops changing, which is `sigma_clipped_filter(maxiters=None)`. `'mmm'` and `'iraf'` are the formulas in astroimred's
+stops changing, which is `sigma_clipped_filter(maxiters=None)`. `'mmm'` and
+`'iraf'` use the formulas in [astroimred](https://github.com/ysBach/astroimred)'s
 `sky_fit`; neither is DAOPHOT's iterative MMM algorithm. For a SExtractor-like
 background, clip first: `sigma_clipped_filter(..., maxiters=None, statistic="mode")`.
 

@@ -2,34 +2,16 @@
 title: "Guides"
 ---
 
-Choose a path after the [quickstart](../quickstart.qmd). These pages explain
-the numerical contract behind each operation; the [API reference](../api/index.qmd)
-lists every signature and parameter.
+These guides explain the numerical behavior and uses of each operation.
+See the [Quickstart](../quickstart.qmd) for small examples and the
+[API reference](../api/index.qmd) for signatures and parameters.
 
-| If you need to... | Start with | Result scope |
-| --- | --- | --- |
-| Estimate local level or scatter | [Neighborhood statistics](semantics.qmd) | Every output position is filtered. |
-| Check measured cost and limits | [Benchmark evidence](benchmarks.qmd) | Recorded measurements show scope. |
-
-## Suggested reading path
-
-1. Follow the [quickstart](../quickstart.qmd) using small NumPy arrays.
-2. Read the guide for the operation you selected.
-3. Open the matching [API section](../api/index.qmd) for the exact call.
-4. Check [benchmark evidence](benchmarks.qmd) before making performance claims.
-
-The guides follow the repository's `main` branch and can describe source-build
-behavior that is not yet on PyPI.
-
-## More operations
-
-After the neighborhood-statistic examples, use these guides for additional
-operations. Each retains its own numerical contract.
-
-| Task | Guide |
+| Guide | Topics |
 | --- | --- |
-| Apply a kernel or smooth missing data | [Convolution and Gaussian filters](convolution.qmd) |
-| Build Moffat, Student-t, top-hat, or ring kernels | [N-dimensional kernels](kernels.qmd) |
-| Estimate a local mode or robust level | [Robust statistics](robust.qmd) |
-| Find edges or remove compact features | [Edges and morphology](morphology.qmd) |
-| Change only known bad pixels | [Masked-pixel repair](fixpix.qmd) |
+| [Neighborhood-statistic filtering semantics](semantics.qmd) | Windows, boundaries, missing samples, and local statistics. |
+| [Convolution and Gaussian filters](convolution.qmd) | Weighted sums, smoothing, and Gaussian derivatives. |
+| [N-dimensional kernels](kernels.qmd) | Box, top-hat, ring, Gaussian, Moffat, and Student-t weights. |
+| [Percentiles, MAD, and sigma clipping](robust.qmd) | Robust estimates of local level and scatter. |
+| [Edges and morphology](morphology.qmd) | Edge operators and grey morphology. |
+| [Masked-pixel repair](fixpix.qmd) | Repair methods for known bad pixels. |
+| [Benchmarks](benchmarks.qmd) | Measured performance and comparison methods. |

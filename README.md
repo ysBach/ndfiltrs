@@ -1,18 +1,16 @@
 # ndfiltrs
 
-`ndfiltrs` is a separate Python package and repository that reuses the
-pure-Rust median-selection kernel from `reducers`; it does not require the
-Python `reducers` distribution at runtime.
+`ndfiltrs` provides NumPy filters implemented in Rust. It reuses the
+pure-Rust median-selection kernel from [reducers](https://github.com/ysBach/reducers),
+without requiring its Python package at runtime.
 
 Version 0.1.0 provides N-dimensional neighborhood statistics, arbitrary-kernel
 convolution, Gaussian filters, and masked-pixel repair for aligned, native-endian
 NumPy `float32` and `float64` arrays. Unaligned arrays are rejected.
 
 Read the [online documentation](https://ysbach.github.io/ndfiltrs/) for the
-quickstart, generated API reference, numerical guides, and benchmark evidence.
+quickstart, API reference, numerical guides, and benchmarks.
 It follows `main` and may include changes not yet released on PyPI.
-To edit or publish the site, see the
-[documentation guide](docs/quarto/contributing.qmd).
 
 ## Source build
 
@@ -54,6 +52,31 @@ versioned [gold image](tests/data/gold_v1/README.md) rather than regenerating it
 to fit an implementation. Benchmark procedures are in
 [benchmarks/README.md](benchmarks/README.md).
 
+## Build the documentation
+
+Install [Quarto](https://quarto.org/docs/get-started/) (the site is tested with
+1.9.37), then create a separate docs environment:
+
+```bash
+uv venv .venv-docs --python 3.13
+uv pip install --python .venv-docs/bin/python -r docs/requirements-quarto.txt
+make docs-build
+make docs-preview
+```
+
+Check the rendered menus with
+`.venv-docs/bin/python -m pytest -q tests/test_docs_navigation.py`.
+
+Edit guides in `docs/*.md`, API docstrings in `python/ndfiltrs/`, and site
+navigation in `docs/quarto/_quarto.yml`. The build generates the guide and
+API pages; do not edit those generated files. Examples are not executed
+during the site build.
+
+The [docs workflow](.github/workflows/docs.yml) checks pull requests and
+publishes pushes to `main`. In GitHub's Pages settings, select **GitHub
+Actions** as the source and allow the `github-pages` environment to deploy
+from `main`.
+
 ## Use
 
 ```python
@@ -84,7 +107,7 @@ third = nf.rank_filter(image, 2, footprint=nf.kernels.tophat(1, ndim=2))
 Window geometry matches SciPy; NaN/infinity policies are explicit. See
 [filtering semantics](docs/semantics.md) for the exact contract.
 
-To choose the new exact algorithms explicitly:
+To choose an exact selection network or running-sum mean:
 
 ```python
 filtered = nf.nanmedian_filter(image, 3, method="sortnet")
@@ -183,7 +206,8 @@ local mean replacement (`method="mean"`, optionally weighted by a `kernel`,
 like Astropy's `interpolate_replace_nans` with an explicit mask). All options
 including `method` are keyword-only. The default linear method interpolates
 whole masked runs along their shortest axis, using `priority` to break ties. It preserves the numerical array behavior of
-`astroimred.fixpix`, including crossing-run write order, and releases the GIL.
+[astroimred's `fixpix`](https://github.com/ysBach/astroimred/blob/fb70cae872406f907175e3b47d497ffe14b8c238/src/astroimred/imutil/pixels.py),
+including crossing-run write order, and releases the GIL.
 Median and mean repair use original unmasked neighbors and compute only masked
 windows, in parallel.
 The default always returns an independent copy. `copy=False` permits input reuse
@@ -212,7 +236,7 @@ computed without first squaring its physical scale, so it can remain finite
 when variance overflows. These maps measure local scatter, including image
 structure; they are not calibrated detector uncertainty maps.
 
-Mean filters use compensated float64 accumulation with an overflow rescaling
+By default, mean filters use compensated float64 accumulation with an overflow rescaling
 fallback and cast once to the input dtype. By default each neighborhood is
 evaluated independently, so work scales with window volume. For large boxcars,
 `method="separable"` averages one axis at a time,
@@ -224,9 +248,10 @@ still contribute. It is a full-image filter, not a masked-pixel repair method.
 
 Performance depends on the operation, window, array layout, and thread count.
 `ndfiltrs` does not promise to outperform SciPy or NumPy on every workload.
-The [benchmark evidence](docs/benchmarks.md) separates measured comparisons
+The [benchmarks](docs/benchmarks.md) separate measured comparisons
 from untested claims. Native IRAF `fixpix` has not been benchmarked;
-comparisons with `astroimred.fixpix` do not establish IRAF performance.
+comparisons with [astroimred](https://github.com/ysBach/astroimred)'s `fixpix`
+do not establish IRAF performance.
 
 Release tooling targets GitHub and PyPI. Manual release-workflow runs build and
 test without uploading to a registry; matching version tags publish only after
@@ -234,7 +259,7 @@ the required CI and wheel jobs pass. See [RELEASING.md](RELEASING.md) for the
 first-project setup, rehearsal, tagging commands, and the shared publishing
 convention for these packages.
 
-The build pins the published `reducers 0.4.0` dependency without a local path
+The build pins [reducers 0.4.0](https://crates.io/crates/reducers/0.4.0) without a local path
 override. Publishing requires a PyPI trusted publisher and a successful hosted
 rehearsal. Consult GitHub Actions for current Linux/macOS/Windows build results.
 The Rust API remains private, so crates.io publication is disabled.
@@ -243,7 +268,9 @@ See [source attribution](docs/semantics.md#source-attribution) for provenance.
 ## License
 
 `ndfiltrs` is distributed under the [MIT License](LICENSE).
-The `fixpix` behavioral source is `astroimred`; its BSD notice is included in
+The `fixpix` behavioral source is [astroimred](https://github.com/ysBach/astroimred);
+its BSD notice is included in
 [the package](python/ndfiltrs/licenses/astroimred-BSD-3-Clause.txt).
-The Rust `reducers 0.4.0` dependency declares MIT and BSD-3-Clause licenses;
+The Rust [reducers 0.4.0](https://crates.io/crates/reducers/0.4.0) dependency
+declares MIT and BSD-3-Clause licenses;
 both notices are included in [the package](python/ndfiltrs/licenses/).

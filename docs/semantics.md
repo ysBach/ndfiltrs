@@ -101,8 +101,9 @@ Retained infinities of one sign yield that infinity; opposing infinities
 produce canonical NaN. Infinity signs are tracked separately, so overflow
 of a finite subtotal cannot change the result in a window containing infinity.
 
-Both dtypes use compensated (Neumaier) float64 summation in C-order window
-traversal, divide by the retained count, then cast once to the input dtype.
+With `method="direct"`, both dtypes use compensated (Neumaier) float64 summation
+in C-order window traversal, divide by the retained count, then cast once to
+the input dtype.
 Only if the finite subtotal overflows, the window is accumulated again after
 power-of-two rescaling based on its retained count. This bounds intermediate
 magnitudes; the final rescaled mean is bounded by the retained sample range.
@@ -115,8 +116,8 @@ Ordinary means accumulate samples during traversal without a temporary window
 buffer. Overflow recovery gathers and rescales that window only. Weighted
 filters use the same streaming approach, replaying samples when products or
 subtotals need binary scaling. Interior windows use precomputed flat offsets;
-boundary windows still apply the selected mapping on each axis. These changes
-preserve tap order and arithmetic rather than using a rolling sum.
+boundary windows still apply the selected mapping on each axis. Direct
+traversal preserves tap order and does not use a rolling sum.
 
 Each window is independent, so nonfinite samples never contaminate unrelated
 windows through a running sum. This default `method="direct"` takes `O(N * V * d)`
@@ -217,7 +218,8 @@ Python validates inputs; PyO3 snapshots them before detaching from the GIL.
 Rust owns boundary mapping, N-D traversal, invalid-value filtering, support
 counts, and one reusable scratch buffer per Rayon task. `src/reduction.rs`
 selects the statistic. Median calls the pure-Rust
-`reducers::reducers_1d::median_valid_in_place`; reducers' Python bindings and
+[reducers::reducers_1d::median_valid_in_place](https://docs.rs/reducers/0.4.0/reducers/reducers_1d/fn.median_valid_in_place.html);
+reducers' Python bindings and
 axis-level parallel dispatch are not used. The Python reducers distribution
 is not needed at runtime.
 
@@ -225,14 +227,12 @@ Local arithmetic supplements the reducers selection primitive:
 `src/mean.rs` supplies compensated sums and finite-overflow recovery,
 `src/dispersion.rs` avoids unscaled squared intermediates, and local extrema
 scans preserve signed-zero ordering without nested parallelism. The arithmetic
-contracts above describe their limits. Sharing these improvements upstream
-requires preserving those contracts.
+contracts above describe their limits.
 
 Rust checks shape, stride, boundary-period, window-volume, and allocation
 arithmetic. Recoverable allocation failures become Python memory errors;
-allocator aborts remain an external limitation. The specialized 2-D candidate
-is confined to the `benchmark` Cargo feature; measurements do not justify
-production dispatch. See [benchmarks](benchmarks.md).
+allocator aborts remain an external limitation. See [benchmarks](benchmarks.md)
+for measured performance and comparison conditions.
 
 ### Explicit exact methods
 
@@ -240,7 +240,7 @@ Use `median_filter(..., method="sortnet")` or
 `nanmedian_filter(..., method="sortnet")` for comparator-network selection.
 Use `mean_filter(..., method="boxcar")` or
 `nanmean_filter(..., method="boxcar")` for exact rolling sums.
-Existing defaults remain `method="direct"`; there is no automatic cutoff.
+The default is `method="direct"`; there is no automatic cutoff.
 
 - The odd-even median network is generated for any tap count, including arbitrary
   footprints. It removes unused comparisons and symbolic padding, then runs
@@ -274,30 +274,27 @@ the image are not constant-cost. See [benchmarks](benchmarks.md).
 
 ## Source attribution
 
-`fixpix` follows `astroimred/src/astroimred/imutil/pixels.py`, inspected at
-commit `1ba91cb60e95806da9acfe14dbe3af5f1ce7c9d3` (pixel-module revision
-`fb70cae872406f907175e3b47d497ffe14b8c238`). Its BSD 3-Clause notice is retained
-in `python/ndfiltrs/licenses/astroimred-BSD-3-Clause.txt`. NF implements the
-Rust repair itself; astroimred is only an optional comparison dependency.
+`fixpix` follows astroimred's
+[pixel module at fb70cae](https://github.com/ysBach/astroimred/blob/fb70cae872406f907175e3b47d497ffe14b8c238/src/astroimred/imutil/pixels.py).
+Its [BSD 3-Clause notice](../python/ndfiltrs/licenses/astroimred-BSD-3-Clause.txt)
+is bundled with `ndfiltrs`. The repair implementation is native Rust;
+astroimred is only an optional comparison dependency.
 
-Published reducers 0.3.2 omits `LICENSE` from its crate. The bundled
-`reducers-MIT.txt` comes from its recorded revision
-`7625507ac1ff4101c3f97348c0a79a7d07e6ab5e` and
+The bundled [reducers MIT notice](../python/ndfiltrs/licenses/reducers-MIT.txt) comes from
+[revision 7625507](https://github.com/ysBach/reducers/commit/7625507ac1ff4101c3f97348c0a79a7d07e6ab5e) and the
 [authoritative LICENSE](https://raw.githubusercontent.com/ysbach/reducers/7625507ac1ff4101c3f97348c0a79a7d07e6ab5e/LICENSE).
-The downloaded crate's SHA-256 is
-`07d04b1fe8f55b5694092e0afe10dcb9d66aa1a0b7579e092c23a8f2c431e205`;
-the notice's SHA-256 is
-`a2672db0608261148bbb525fd3869ab0a42b16d24343b1079c646bc67dd5d4da`.
 
-`RUST-DEPENDENCIES.txt` bundles the normal/build dependency notice inventory,
+The [Rust dependency notices](../python/ndfiltrs/licenses/RUST-DEPENDENCIES.txt)
+bundle the normal/build dependency inventory,
 including all target branches and proc macros, excluding dev-only edges.
 The generator preserves source texts, versions, and hashes; checks detect drift
 and missing expected license texts. Artifact checks verify bundled bytes and
 wheel RECORD integrity; `.gitattributes` prevents Windows newline conversion.
 This is a source inventory, not a comprehensive legal review of linked code,
 system/toolchain components, or separately installed Python dependencies.
-The initial inventory uses registry reducers 0.3.2; local overrides must be
-resolved before release. See [publishing](../RELEASING.md).
+The inventory includes [reducers 0.4.0](https://crates.io/crates/reducers/0.4.0)
+and its MIT and BSD 3-Clause
+notices. See [publishing](../RELEASING.md) for release checks.
 
 ## Robust neighborhood statistics
 

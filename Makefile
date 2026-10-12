@@ -6,6 +6,7 @@ QUARTO ?= quarto
 docs-api:
 	"$(DOCS_PYTHON)" docs/quarto/_scripts/stage_guides.py
 	cd docs/quarto && "$(DOCS_PYTHON)" -m quartodoc build
+	"$(DOCS_PYTHON)" docs/quarto/_scripts/stage_guides.py --navigation-only
 
 docs-render: docs-api
 	$(QUARTO) render docs/quarto

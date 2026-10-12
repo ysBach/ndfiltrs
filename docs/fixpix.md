@@ -52,7 +52,8 @@ spans its whole axis has no anchors and performs no write; there is no fallback
 to a longer run on another axis.
 
 Crossing runs follow the final result of repeated C-order whole-run writes in
-`astroimred.fixpix`. This is deliberately different from independently filling
+[astroimred.fixpix](https://github.com/ysBach/astroimred/blob/fb70cae872406f907175e3b47d497ffe14b8c238/src/astroimred/imutil/pixels.py#L114).
+This is deliberately different from independently filling
 each bad pixel only along that pixel's chosen axis. Unmasked pixels are never
 written. A fully masked image is unchanged.
 
@@ -162,7 +163,7 @@ Private test hooks check both GIL progress and source reallocation after the
 snapshot. Benchmarks must compare equivalent numerical results before timing
 and include public-call copies and validation. Speedup is workload-dependent;
 there is no fixed speedup guarantee. Native IRAF `fixpix` has not been timed.
-The `astroimred` comparisons below are not measurements of IRAF itself.
+Comparisons with `astroimred` are not measurements of IRAF itself.
 
 ## Implementation notes
 
@@ -182,68 +183,36 @@ changes the algorithm. Median repair evaluates only original masked windows
 and scatters estimates after all windows finish, so repairs never feed each
 other.
 
-## Original linear measurements (before the sparse-path update)
+## Sparse repair measurements
 
-Measured on 2026-09-06: macOS 26.6 ARM64, CPython 3.13.11, NumPy 2.4.4,
-SciPy 1.17.1, `astroimred` 0.3.0, and a release wheel built with Rust 1.84.0.
-Each result is the median of seven public calls after warmup; timing order
-alternated. Astroimred header updates and verbose output were disabled.
-The input copy, validation, and CCDData construction in `air.fixpix` are
-included. All cases passed exact numerical comparison before timing.
-
-| float64 case | Shape | Bad pixels | nf (ms) | air (ms) | air / nf |
-|---|---|---:|---:|---:|---:|
-| Single pixel | 512 x 512 | 1 | 0.1215 | 0.0772 | 0.64x |
-| Empty mask | 512 x 512 | 0 | 0.1198 | 0.0510 | 0.43x |
-| Random 1% | 512 x 512 | 2,614 | 0.2601 | 4.6803 | 17.99x |
-| Block | 512 x 512 | 625 | 0.1501 | 1.1627 | 7.74x |
-| Columns | 512 x 512 | 5,120 | 0.3054 | 8.8761 | 29.07x |
-| Crossing runs | 512 x 512 | 1,791 | 0.1880 | 3.1201 | 16.60x |
-| Dense mask | 128 x 160 | 14,221 | 0.9132 | 24.6005 | 26.94x |
-| 3-D random | 24 x 28 x 36 | 1,233 | 0.0801 | 2.3477 | 29.30x |
-| Strided | 512 x 256 | 1,315 | 0.1970 | 2.3183 | 11.77x |
-
-Ratios below one mean `ndfiltrs` was slower. Full-mask scanning and copying
-dominated these measurements. See the newer sparse measurements below.
-The corresponding `float32` nonempty multi-pixel cases ranged from 9.89x to
-32.37x. A 10x speedup is therefore achieved on several workloads, not all.
-
-The separate SciPy reference cases used 64 x 64 and 8 x 9 x 10 arrays. Their
-float64 reference/nf ratios were 177.25x and 55.61x respectively. These measure
-the explicit labeling/interpolation reference, not an optimized SciPy fixpix
-function. They are not a general claim of superiority over SciPy.
-
-The local measurement report included both dtypes, source hashes, and timing
-ranges. These are single-machine synthetic workloads;
-runtime and peak memory on a specific scientific pipeline remain to be measured.
-
-## Sparse-path and median measurements
-
-`benchmarks/benchmark_fixpix_sparse.py` compares current linear and median
-repair, no-op aliasing, an optional previous installation, and full-image
-median-filter composition. It checks parity, ownership, and source preservation
-before timing public calls in shuffled order. The full-image median baseline
-is not a SciPy benchmark. Independent-copy and aliasing results must be compared
-with their different ownership contracts in mind.
+`benchmarks/benchmark_fixpix_sparse.py` compares linear and median repair,
+no-op aliasing, and full-image median-filter composition. It checks numerical
+agreement, ownership, and source preservation before timing public calls in
+shuffled order. Linear interpolation and median repair are different estimators;
+their timings describe cost, not interchangeable scientific results. The
+full-image median comparison uses `ndfiltrs`, not SciPy.
 
 Measured on 2026-09-06 using release wheels built with Rust 1.84.0, macOS
 26.6 ARM64, CPython 3.13.11, and NumPy 2.5.2. Medians of seven rounds,
-five calls per timing sample, after parity/warmup. For 512 x 512 float64:
+five calls per timing sample, after numerical checks and warmup. For
+512 x 512 float64 images and a 3 x 3 median window, times rounded to two
+significant figures are:
 
-| Bad pixels | Prior linear, copy (µs) | Linear, copy (µs) | Linear, copy=False (µs) | Median, copy (µs) |
-|---:|---:|---:|---:|---:|
-| 0 | 127.27 | 29.82 | 5.15 | 31.89 |
-| 1 | 129.41 | 40.20 | 39.13 | 45.04 |
-| 26 | 126.80 | 36.27 | 35.85 | 37.79 |
-| 262 | 138.09 | 42.82 | 48.61 | 57.46 |
+| Bad pixels | Linear, copy (µs) | Linear, copy=False (µs) | Median, copy (µs) |
+|---:|---:|---:|---:|
+| 0 | 30 | 5.2 | 32 |
+| 1 | 40 | 39 | 45 |
+| 26 | 36 | 36 | 38 |
+| 262 | 43 | 49 | 57 |
 
 For zero bad pixels, `copy=False` returns the original ndarray; all other
 results in the table are independent arrays. At 0.1% bad pixels (262), median
-repair took 57.46 µs versus 14.47 ms for full-image median-filter composition.
-That ratio measures avoiding full-image filtering on this sparse input, not a
-claim about general SciPy performance. The raw file also covers float32 and
-2048 x 2048 images. Counts are exact benchmark inputs, not production dispatch
-conditions. Results vary with image, window, layout, cache state, and hardware.
+repair took 57 µs versus 14 ms for full-image median-filter composition.
+This comparison measures the benefit of filtering only masked positions on
+this sparse input, not general SciPy performance. The report also covers
+float32 and 2048 x 2048 images. Results vary with image, window, layout, cache
+state, and hardware; runtime and peak memory in a scientific pipeline need
+to be measured for that pipeline.
 
 Raw measurement reports remain local. Use the
 [benchmark commands](../benchmarks/README.md) to generate timings and source hashes.
