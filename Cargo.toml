@@ -4,12 +4,13 @@ version = "0.1.0"
 edition = "2021"
 rust-version = "1.84"
 description = "Fast NaN-aware N-dimensional filters for NumPy, implemented in Rust"
-license = "MIT"
+license = "BSD-3-Clause"
 readme = "README.md"
 repository = "https://github.com/ysBach/ndfiltrs"
 homepage = "https://github.com/ysBach/ndfiltrs"
-# Python wheels contain the Rust implementation; no public Rust API yet.
-publish = false
+documentation = "https://docs.rs/ndfiltrs"
+keywords = ["filter", "median", "nan", "image-processing", "ndarray"]
+categories = ["science", "algorithms", "multimedia::images"]
 
 [lib]
 name = "ndfiltrs"

@@ -9,7 +9,7 @@ Build and test commands vary by package:
 
 | Package | Build | Registries |
 | --- | --- | --- |
-| ndfiltrs | Maturin: platform wheels + sdist | PyPI |
+| ndfiltrs | Maturin: platform wheels + sdist | PyPI + crates.io |
 | [imcombiners](https://github.com/ysBach/imcombiners) / [reducers](https://github.com/ysBach/reducers) | Maturin: platform wheels + sdist | PyPI + crates.io |
 | [astroimred](https://github.com/ysBach/astroimred) | uv_build: pure-Python wheel + sdist | PyPI |
 
@@ -41,7 +41,8 @@ release convention.
    Configure its actual URL as `origin`.
    Complete the setup below before pushing `main`.
 
-2. Create a GitHub environment named `pypi`, restricted to `v*` tags. Register a
+2. Create GitHub environments named `pypi` and `crates-io`, each restricted to
+   `v*` tags. Register a
    [PyPI pending publisher](https://pypi.org/manage/account/publishing/) for the
    new project (or use Publishing settings for an existing project you own):
 
@@ -53,6 +54,22 @@ release convention.
    Pending publishers do not reserve names. Use the
    [official first-project instructions](https://docs.pypi.org/trusted-publishers/creating-a-project-through-oidc/).
    This setup does not need a permanent PyPI token in GitHub secrets.
+
+   crates.io accepts a trusted publisher only for an existing crate
+   ([RFC 3691](https://rust-lang.github.io/rfcs/3691-trusted-publishing-cratesio.html)).
+   Publish the first version by hand from the rehearsed commit, before you
+   push its tag:
+
+   ```sh
+   cargo login          # paste a crates.io API token with publish-new scope
+   cargo publish --locked
+   ```
+
+   Then add the trusted publisher in the crate's crates.io settings:
+   owner `ysBach`, repository `ndfiltrs`, workflow `release.yml`, environment
+   `crates-io`. Revoke the API token after use. The `crates-io` job skips a
+   version that already exists on crates.io, so the tag of the hand-published
+   version still creates the GitHub release.
 
 3. Set **Settings → Pages → Source** to **GitHub Actions** before the first
    push to `main`. Otherwise, the Docs deploy job fails. Details:
@@ -103,8 +120,9 @@ release convention.
    git push origin v0.1.0
    ```
 
-   **Pushing the tag publishes.** Check the Actions run, PyPI version, and GitHub
-   release. From the repository root, check installation separately:
+   **Pushing the tag publishes** to PyPI and crates.io. A plain `git push`
+   does not push tags. Check the Actions run, the PyPI and crates.io versions,
+   and the GitHub release. From the repository root, check installation separately:
 
    ```sh
    uv venv --no-project /tmp/ndfiltrs-pypi-check --python 3.13
@@ -121,7 +139,8 @@ release convention.
 x86-64. Linux requires glibc 2.28+. Wheels receive Python 3.10 tests and a 3.13
 smoke test. CI separately checks test-hook builds and sdist installation.
 The workflows configure these checks. Platform support requires successful
-hosted runs. The Rust API is private, so `ndfiltrs` retains `publish = false`.
+hosted runs. The crate's public Rust API is the set of plans and functions
+re-exported from `src/lib.rs`. Kernel modules stay private.
 
 On failure, rerun **failed jobs** in the original run. Preserve its artifacts.
 `uv publish --check-url` skips identical uploads and rejects differing content.
