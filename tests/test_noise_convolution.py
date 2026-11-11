@@ -216,8 +216,8 @@ def test_propagated_variance_matches_monte_carlo() -> None:
     degrees of freedom. The bounds are its quantiles at a total false-failure
     probability ``alpha = 1e-6``, Bonferroni-split over every tested pixel and
     output. Bonferroni stays valid although neighboring outputs correlate. With
-    ``R = 4000`` and 720 tests, the accepted ratio range is about
-    ``[0.870, 1.141]``. The seed
+    ``R = 4000`` and 1080 tests (three maps of 360 pixels), the accepted ratio
+    range is about ``[0.869, 1.143]``. The seed
     is fixed, so the test is deterministic.
     """
     rng = np.random.default_rng(20261112)
@@ -242,7 +242,7 @@ def test_propagated_variance_matches_monte_carlo() -> None:
         (fit.amplitude, fit.variance[0]),
     ]
     valid = np.isfinite(mean_variance[0]) & np.isfinite(fit.variance[0])
-    lower, upper = _chi2_bounds(realizations, 2 * int(valid.sum()), 1e-6)
+    lower, upper = _chi2_bounds(realizations, 3 * int(valid.sum()), 1e-6)
     for samples, predicted in checks:
         ratio = samples.var(axis=0, ddof=1)[valid] / predicted[valid]
         assert lower < ratio.min() and ratio.max() < upper, (ratio.min(), ratio.max())

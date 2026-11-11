@@ -291,7 +291,9 @@ def matched_filter(
     `amplitude` is an unbiased estimate of ``A``. With inverse-variance
     weighting, it is the minimum-variance linear unbiased estimate, and
     `variance` equals ``1 / S`` away from boundary repeats. With uniform
-    variance, both weightings give the same `snr`.
+    variance, both weightings give the same `snr`, except with
+    ``mode="constant"`` and a finite `cval`: kernel weighting keeps the exact
+    padding samples, and inverse-variance weighting omits them.
 
     NaN data, NaN or negative noise, and infinite variance (inverse variance
     ``0``) omit the sample. Inverse-variance weighting also omits samples with

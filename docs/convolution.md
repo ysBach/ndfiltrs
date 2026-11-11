@@ -142,7 +142,7 @@ For one output, tap $j$ reads source pixel $p(j)$. Group the taps by pixel:
 $$
 y = \sum_j w_j x_{p(j)} = \sum_p c_p x_p,
 \qquad
-c_p = \sum_{j:\,p(j)=p} w_j .
+c_p = \sum_{j: p(j)=p} w_j .
 $$
 
 For independent $x_p$ with variance $v_p$,
@@ -176,7 +176,7 @@ Where the noise omits no sample, the first output equals `nanconvolve` (or
 
 ### Matched filter
 
-Model the data around each position as $x_j = A\,w_j + n_j$, with template
+Model the data around each position as $x_j = A w_j + n_j$, with template
 $w$ and independent zero-mean noise $n_j$ of variance $v_j$. `matched_filter`
 correlates the template, so it keeps the orientation of a PSF image. With
 coefficients $a_j$ over the retained samples:
@@ -191,7 +191,7 @@ N = \sum_j a_j x_j,
 \mathrm{snr} = \frac{N}{\sqrt{\operatorname{Var}(N)}} .
 $$
 
-$\operatorname{Var}(N) = \sum_p \bigl(\sum_{j:\,p(j)=p} a_j\bigr)^2 v_p$ uses
+$\operatorname{Var}(N) = \sum_p \bigl(\sum_{j: p(j)=p} a_j\bigr)^2 v_p$ uses
 the same grouping as above. $E[N] = A S$, so $\hat A$ is unbiased.
 
 - `weighting="inverse_variance"` (default): $a_j = w_j / v_j$. This
@@ -203,7 +203,9 @@ the same grouping as above. $E[N] = A S$, so $\hat A$ is unbiased.
   Its `snr` equals $y/\sqrt{\operatorname{Var}(y)}$ for either function above:
   the normalization cancels.
 
-With uniform variance both weightings give the same `snr` and amplitude.
+With uniform variance both weightings give the same `snr` and amplitude,
+except with `mode="constant"` and a finite `cval`. There, kernel weighting
+keeps the exact padding samples, and inverse-variance weighting omits them.
 Under pure noise, `snr` has unit variance, so a threshold on `snr` is in
 units of the standard deviation of the filtered image. If the template sums
 to one, $\hat A$ is the total flux of a point source with that PSF.

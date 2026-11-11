@@ -643,6 +643,82 @@ mod tests {
 }
 
 #[cfg(test)]
+mod matched_tests {
+    use super::*;
+
+    #[test]
+    fn propagate_policy_marks_outputs_that_depend_on_invalid_samples() {
+        let template = WeightKernel::new([3], [1.0; 3])
+            .correlate(true)
+            .mode(BoundaryMode::Reflect);
+        let data = [1.0_f64, 2.0, 3.0, 4.0, 5.0];
+        let noise = [1.0, -1.0, 1.0, 1.0, 1.0];
+        let filter = |weighting| {
+            MatchedFilter::<f64>::new(&[5], &template, weighting, InvalidPolicy::Propagate, 0.0)
+                .unwrap()
+        };
+        // Inverse-variance coefficients depend on the noise: every output is NaN.
+        let maps = filter(MatchedWeighting::InverseVariance)
+            .apply(&data, &noise, NoiseMap::Variance)
+            .unwrap();
+        for index in 0..3 {
+            assert!(maps.amplitude[index].is_nan() && maps.snr[index].is_nan());
+        }
+        assert_eq!(maps.amplitude[3], 4.0);
+        // Kernel coefficients do not: the amplitude stays finite.
+        let maps = filter(MatchedWeighting::Kernel)
+            .apply(&data, &noise, NoiseMap::Variance)
+            .unwrap();
+        assert_eq!(maps.amplitude[1], 2.0);
+        assert!(maps.variance[1].is_nan() && maps.snr[1].is_nan());
+        let maps = filter(MatchedWeighting::Kernel)
+            .apply(
+                &[1.0, f64::NAN, 3.0, 4.0, 5.0],
+                &[1.0; 5],
+                NoiseMap::Variance,
+            )
+            .unwrap();
+        assert!(maps.amplitude[2].is_nan() && maps.variance[2].is_nan());
+    }
+
+    #[test]
+    fn invalid_templates_and_counts_are_errors() {
+        let omit = |min_count| InvalidPolicy::Omit {
+            ignore_inf: false,
+            min_count,
+        };
+        for (weights, policy) in [
+            ([0.0; 3], omit(1)),
+            ([1.0; 3], omit(0)),
+            ([1.0; 3], omit(4)),
+        ] {
+            assert!(matches!(
+                MatchedFilter::<f64>::new(
+                    &[5],
+                    &WeightKernel::new([3], weights),
+                    MatchedWeighting::Kernel,
+                    policy,
+                    0.0
+                ),
+                Err(Error::InvalidConfiguration(_))
+            ));
+        }
+        let filter = MatchedFilter::<f32>::new(
+            &[2],
+            &WeightKernel::new([1], [1.0]),
+            MatchedWeighting::InverseVariance,
+            omit(1),
+            0.0,
+        )
+        .unwrap();
+        assert_eq!(
+            filter.apply(&[1.0; 2], &[1.0], NoiseMap::Variance).err(),
+            Some(Error::LengthMismatch)
+        );
+    }
+}
+
+#[cfg(test)]
 mod edge_tests {
     use super::*;
 

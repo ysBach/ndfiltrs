@@ -408,8 +408,8 @@ impl Scratch {
 ///
 /// Returns `true` when every tap of this output lies inside the array, so
 /// [`tap_source`] can use the precomputed flat displacements. `convolve_at`
-/// keeps its own inline copy of this traversal: sharing it measurably slowed
-/// the existing single-thread paths.
+/// keeps its own inline copy of this traversal, so its generated code is
+/// unchanged.
 #[inline(always)]
 pub(crate) fn locate<T>(
     config: &ConvolutionConfig<T>,

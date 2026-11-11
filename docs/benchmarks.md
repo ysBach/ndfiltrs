@@ -194,17 +194,18 @@ agreed with Astropy to within 4e-15 of the array's largest magnitude.
 | 4096² | Moffat 25×25 | NaN mean | 7.0 | 63 | 25 |
 
 With 14 threads, ndfiltrs is 1.5× to 3.6× faster than the repeated Astropy
-calls. With one thread it is 1.7× to 5.3× slower. Per kernel tap, its
+calls. With one thread it is 2.2× to 5.3× slower. Per kernel tap, its
 compensated accumulation with overflow checks costs about 4 ns for the raw
 sum with variance, against about 0.4 ns for each Astropy pass. A second
 Astropy run of the largest case took 38 s instead of 25 s, so the machine
 load varied. Other sessions shared the machine during these runs.
 
-Adding the variance path did not change the code of the existing
-convolution kernel. With one thread on a 1024² image, `nanconvolve` with the
-Moffat kernel took 1.94 s before and after the change (current/previous
-median ratio 0.999). Other comparisons stayed within the run-to-run spread
-under a load average near 20.
+Adding the variance path left the source of the existing convolution
+kernel unchanged. Two release wheels, built the same way before and after the
+change, were timed with alternating calls on 1024² (one thread) and 2048²
+(14 threads) images. With one thread, the current/previous ratios of the
+median times for `convolve` and `nanconvolve` with both kernels were 0.990 to
+0.999. With 14 threads they were 0.956 to 1.036, within the run-to-run spread.
 
 ## Measurement setup
 
