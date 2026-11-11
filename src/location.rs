@@ -47,6 +47,18 @@ pub(crate) fn mode_estimate(values: &mut [f64], estimator: ModeEstimator, pearso
         ModeEstimator::Mmm | ModeEstimator::Iraf => f64::NAN,
     };
     let median = median_valid_in_place(values);
+    mode_from_moments(mean, median, std, estimator, pearson)
+}
+
+/// Apply a mode rule to a sample's mean, median, and population standard
+/// deviation. `std` is read only by [`ModeEstimator::Sex`].
+pub(crate) fn mode_from_moments(
+    mean: f64,
+    median: f64,
+    std: f64,
+    estimator: ModeEstimator,
+    pearson: f64,
+) -> f64 {
     let difference = median - mean;
     let pearson_mode = median + (pearson - 1.0) * difference;
     match estimator {

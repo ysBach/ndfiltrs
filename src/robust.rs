@@ -9,7 +9,7 @@ use crate::mean::Sum;
 use crate::window::Window;
 
 // Phi^-1(0.75): the median absolute deviation of a standard normal variable.
-const NORMAL_UPPER_QUARTILE: f64 = 0.674_489_750_196_081_7;
+pub(crate) const NORMAL_UPPER_QUARTILE: f64 = 0.674_489_750_196_081_7;
 
 pub(crate) use crate::reduction::InvalidPolicy as SamplePolicy;
 
@@ -299,7 +299,7 @@ impl RobustReduction {
 }
 
 /// SExtractor accepts `BACK_PEARSON` from 1 upward; 1 makes the mode the median.
-fn validate_pearson(pearson: f64) -> Result<(), Error> {
+pub(crate) fn validate_pearson(pearson: f64) -> Result<(), Error> {
     if pearson.is_finite() && pearson >= 1.0 {
         Ok(())
     } else {
