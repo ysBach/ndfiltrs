@@ -138,6 +138,20 @@ Both methods use more memory to reduce repeated work. Neither is faster for
 every input. The default is `method="direct"`.
 See [measured comparisons](docs/benchmarks.md).
 
+To give every pixel its own window, pass an integer map of radii (or sizes)
+with the image's shape:
+
+```python
+radius = np.floor(1 + 0.05 * rho).astype(int)  # e.g. grow with distance rho
+smooth = nf.nanvariable_mean_filter(image, radius=radius)
+```
+
+The cost per pixel does not depend on the window size. Sums use float64
+summed-area tables, so results are close to, but not bit-identical with,
+`nanmean_filter`. One huge finite value (such as a 1e30 sentinel) degrades
+distant windows, so set such values to NaN first. See
+[per-pixel window means](docs/variable.md).
+
 Set `RAYON_NUM_THREADS` before the first Rayon-using call to configure
 parallelism. `nf.get_num_threads()` reports the global pool's thread count.
 
@@ -313,7 +327,8 @@ See [source attribution](docs/semantics.md#source-attribution) for provenance.
 The `ndfiltrs` crate exposes the same kernels on C-ordered `f32`/`f64`
 slices: window statistics (`WindowFilter`), robust statistics including
 percentiles and sigma clipping (`RobustFilter`), convolution
-(`Convolution`, `separable_smooth`), and mask-directed repair
+(`Convolution`, `separable_smooth`), per-pixel window means
+(`variable_mean`, `VariableWindow`), and mask-directed repair
 (`fixpix_linear`, `fixpix_median`, `fixpix_mean`). Gaussian, derivative,
 and morphology helpers remain Python-level compositions of these kernels.
 

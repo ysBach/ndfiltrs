@@ -76,6 +76,11 @@ quartodoc:
         - nanbiweight_location_filter
         - biweight_scale_filter
         - nanbiweight_scale_filter
+    - title: Per-pixel windows
+      desc: Means whose rectangular window size changes from pixel to pixel.
+      contents:
+        - variable_mean_filter
+        - nanvariable_mean_filter
     - title: Convolution and correlation
       desc: Raw weighted sums or normalized smoothing after omitting missing samples.
       contents:

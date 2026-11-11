@@ -19,6 +19,7 @@ GUIDES = (
     "savgol",
     "kernels",
     "robust",
+    "variable",
     "morphology",
     "fixpix",
     "benchmarks",

@@ -21,6 +21,8 @@ NumPy, implemented in Rust.
   - `Convolution` with `WeightKernel` and `WeightPolicy`, and
     `separable_smooth`.
   - `fixpix_linear`, `fixpix_median`, and `fixpix_mean` repair in place.
+  - `variable_mean` / `variable_mean_into` with `VariableWindow`: means over
+    per-pixel rectangular windows.
 - Shared types: `Neighborhood`, `BoundaryMode`, `InvalidPolicy`, `Error`, and
   the sealed `FilterFloat`. Public enums are `#[non_exhaustive]`.
 
@@ -65,6 +67,10 @@ NumPy, implemented in Rust.
   and their `nan*` variants, plus `rank_filter`. Example: the 25th percentile
   of `[1, 3, 9, 11]` is `2.5`.
   Rectangular min/max use sliding extrema rather than visiting every window element.
+- Per-pixel windows: `variable_mean_filter` and `nanvariable_mean_filter`
+  average each pixel over its own rectangular window, given as an integer
+  `size` or `radius` map (isotropic or per axis). Float64 summed-area tables
+  make the cost per pixel independent of the window size.
 - Moments: `mean_filter`, `var_filter`, `std_filter` (with `ddof`), and
   their `nan*` variants. `mean_filter(method="separable")` averages one axis at a
   time for large boxcar windows.
