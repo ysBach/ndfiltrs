@@ -129,6 +129,9 @@ smoothed = nf.nanmean_filter(image, 31, method="boxcar")
 ```
 
 `sortnet` preserves direct median results, including arbitrary footprints.
+`histogram` (median and rank filters) also preserves direct results on
+rectangular `size` windows. For a `k x k` window its cost per output grows
+with `k`, not `k * k`, so it suits large sky medians.
 `boxcar` accepts rectangular sizes and rounds the exact mean once to the output
 dtype. Its last bits can differ from the direct compensated sum.
 Both methods use more memory to reduce repeated work. Neither is faster for

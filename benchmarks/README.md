@@ -42,6 +42,25 @@ See [results and limits](../docs/benchmarks.md).
 Use `--method boxcar --size 63` to sample exact means. Do not collect comparative
 timings while sampling, compiling, or running tests.
 
+## Compare median methods on large images
+
+`benchmark_histogram` times `median_filter` with `method="histogram"`,
+`"direct"`, and `"sortnet"`, and SciPy's `median_filter`, on 1024×1024 and
+4096×4096 inputs with windows from 3 to 201. Before timing, it checks that
+`direct` and `sortnet` equal `histogram` bitwise, and that SciPy equals it on
+odd windows. When `direct` is skipped, a 256×256 input checks `histogram`
+against `direct` at the same window size.
+
+```bash
+OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 RAYON_NUM_THREADS=1 uv run --no-sync python -m benchmarks.benchmark_histogram --repeats 3 --budget 30 --output /tmp/histogram-threads1.json
+OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 RAYON_NUM_THREADS=14 uv run --no-sync python -m benchmarks.benchmark_histogram --repeats 3 --budget 30 --output /tmp/histogram-threads14.json
+```
+
+`--budget` is in seconds. A method stops for the larger windows of a case
+when its last time, scaled by window area, predicts a call longer than the
+budget. Calls longer than `budget / repeats` keep their first sample only.
+Reports record the load average before and after each case.
+
 ## Compare Astro-SCRAPPY exact and approximate medians
 
 Install only into the project environment if needed:

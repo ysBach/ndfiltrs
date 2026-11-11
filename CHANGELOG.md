@@ -29,6 +29,11 @@ NumPy, implemented in Rust.
 - Median filters offer exact per-window selection (`method="direct"`) and
   vectorized selection networks (`method="sortnet"`). Direct selection is the
   default. The faster choice depends on the input and window.
+- Rectangular median and rank filters also offer a sliding histogram of
+  block-local sample ranks (`method="histogram"`, Rust
+  `Reduction::HistogramMedian` and `Reduction::HistogramRank`). Results equal
+  direct selection bit for bit. Cost per output is proportional to the
+  window volume divided by the largest window side.
 - Mean filters offer compensated direct sums, axis-by-axis filtering, and exact
   running sums (`method="boxcar"`). Boxcar rounds once to the output dtype and
   may differ in the last bits from the other methods. For example,

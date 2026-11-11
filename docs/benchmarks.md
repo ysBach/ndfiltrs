@@ -34,6 +34,93 @@ The full-image operations therefore differ.
 
 These exact-median comparisons exclude Astro-SCRAPPY's approximate row/column median.
 
+## Large-window medians
+
+`histogram` was faster than `direct` and SciPy at every measured window with
+one worker. It was faster than `sortnet` from 7×7 upward with one worker, and
+from 7×7 (float64) or 11×11 (float32) with 14 workers. These timings are provisional: sibling builds and tests
+loaded the machine during the run.
+
+Times are median wall times in milliseconds of complete Python calls on
+finite inputs with `mode="reflect"`, rounded to two significant figures.
+"—" means the method was skipped: its predicted call time exceeded 30 s.
+
+4096×4096, one worker:
+
+| Window | `histogram` float32 | `histogram` float64 | `direct` float32 | `sortnet` float32 | SciPy float32 |
+| ---: | ---: | ---: | ---: | ---: | ---: |
+| 3×3 | 770 | 810 | 1,000 | 120 | 1,300 |
+| 7×7 | 1,000 | 970 | 3,100 | 1,100 | 8,800 |
+| 11×11 | 1,200 | 1,300 | 5,500 | 3,300 | 20,000 |
+| 21×21 | 1,900 | 1,700 | 14,000 | 15,000 | — |
+| 31×31 | 2,900 | 2,200 | — | — | — |
+| 51×51 | 4,000 | 3,800 | — | — | — |
+| 101×101 | 5,400 | 4,700 | — | — | — |
+| 201×201 | 8,700 | 8,400 | — | — | — |
+
+4096×4096, 14 workers (SciPy uses one thread):
+
+| Window | `histogram` float32 | `histogram` float64 | `direct` float32 | `sortnet` float32 | SciPy float32 |
+| ---: | ---: | ---: | ---: | ---: | ---: |
+| 3×3 | 210 | 140 | 170 | 19 | 1,300 |
+| 7×7 | 210 | 150 | 410 | 120 | 8,100 |
+| 11×11 | 260 | 170 | 700 | 400 | 18,000 |
+| 21×21 | 340 | 250 | 2,000 | 2,200 | — |
+| 31×31 | 450 | 300 | 4,000 | 7,100 | — |
+| 51×51 | 750 | 450 | 15,000 | 43,000 | — |
+| 101×101 | 1,100 | 840 | — | — | — |
+| 201×201 | 1,600 | 1,500 | — | — | — |
+
+1024×1024, one worker:
+
+| Window | `histogram` float32 | `histogram` float64 | `direct` float32 | `sortnet` float32 | SciPy float32 |
+| ---: | ---: | ---: | ---: | ---: | ---: |
+| 3×3 | 49 | 52 | 65 | 7.1 | 81 |
+| 7×7 | 59 | 62 | 190 | 60 | 500 |
+| 11×11 | 73 | 73 | 340 | 200 | 1,100 |
+| 31×31 | 180 | 140 | 1,900 | 3,000 | 7,600 |
+| 51×51 | 240 | 220* | 5,000 | 12,000 | 22,000 |
+| 101×101 | 360 | 280 | 21,000 | — | — |
+| 201×201 | 560 | 520 | — | — | — |
+
+\* The matrix run gave 390 ms for this cell. Nine later calls at load
+average 3.9 gave a median of 220 ms. Nine calls at 3×3 in that recheck gave
+47 ms for `histogram` and 63 ms for `direct` (float32), as in the table.
+
+Smallest window from which `histogram` was faster at every larger measured
+window:
+
+| Comparison | 1 worker | 14 workers |
+| --- | --- | --- |
+| vs `direct` | 3×3 in all four cases | 3×3, except 5×5 for 4096² float32 |
+| vs `sortnet` | 7×7 in all four cases | 7×7 for float64, 11×11 for float32 |
+| vs SciPy | 3×3 in all four cases | 3×3 in all four cases |
+
+With one worker on 1024² float32, `histogram` and `sortnet` took 59 and
+60 ms at 7×7. That difference is smaller than the run-to-run variation under
+this load. ndfiltrs does not choose a method from these timings. The default
+stays `method="direct"`.
+
+From 21×21 to 201×201 the `histogram` time grew by 4.5× (float32, one
+worker), while the window area grew by 92×. For a `k × k` window each output
+updates `2k` histogram entries, plus a share of one sort per block (see
+[filtering semantics](semantics.md)). With 14 workers, 4096² took 5.5×
+(float32) and 5.4× (float64) less time than one worker at 201×201.
+The load average was 9 to 49 during the 14-worker run, so this
+scaling is a lower bound for an idle machine, not a measurement of one.
+
+Before timing, every case checked that `direct` and `sortnet` equal
+`histogram` bitwise, and that SciPy equals it on odd windows. Where `direct`
+was skipped, a 256×256 input checked `histogram` against `direct` at the
+same window. All checks passed. The run used 12 window sizes from 3 to 201,
+both dtypes, and three timed calls per method. Calls longer than 10 s kept
+one sample. It used the software versions in
+[measurement setup](#measurement-setup), measured on 12 November 2026. Two
+conditions differ from that setup. Each method's calls ran back to back,
+without rotating the order between methods. Other builds and tests ran
+during timing: the one-minute load average was 3.8 to 22 during the
+one-worker run.
+
 ## Boxcar means
 
 The same run measured rectangular mean filters on finite float64 arrays:

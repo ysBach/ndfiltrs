@@ -275,6 +275,8 @@ for measured performance and comparison conditions.
 
 Use `median_filter(..., method="sortnet")` or
 `nanmedian_filter(..., method="sortnet")` for comparator-network selection.
+Use `method="histogram"` in these functions or in `rank_filter` for a
+sliding rank histogram on rectangular windows.
 Use `mean_filter(..., method="boxcar")` or
 `nanmean_filter(..., method="boxcar")` for exact rolling sums.
 The default is `method="direct"`. There is no automatic cutoff.
@@ -289,6 +291,51 @@ Mapped borders use direct selection.
 
 Each tap becomes a reversible integer key in floating-point total order,
 encoded once. Selected keys decode without changing their bits.
+
+#### Histogram medians and ranks
+
+`method="histogram"` accepts rectangular `size` windows, even sizes, shifted
+origins, and all boundary modes. It rejects `footprint`. Results equal
+direct selection bit for bit, including NaN policies, `min_count`,
+`ignore_inf`, signed-zero order, and the even-count midpoint.
+
+The output is split into blocks. For each block, the method gathers the
+block and its window halo through the boundary modes. It sorts the retained
+samples in floating-point total order and replaces each sample by its rank
+in the block. `cval` is a sample under the same NaN policy. The window then
+visits the block's outputs in a back-and-forth order, so each step moves it
+by one position along one axis. A step removes one face of the window from a
+bit histogram over the ranks and adds the opposite face. A count of set bits
+per group of 4096 ranks makes each median or rank query a short scan.
+Selected ranks map back to the original sample bits. An even count uses the
+same midpoint function as direct selection.
+
+Cost per output, for a window with `size[i]` samples along axis `i` and
+volume `V`:
+
+- A step along axis `i` updates `2 * V / size[i]` histogram entries. The
+  method steps mostly along the axis with the largest `size[i]`.
+- For a `k x k` window this is `2 * k` updates, not `k * k` reads.
+- Each block sort adds about `(support / block) * log2(support)`
+  comparisons per output. Here `support` and `block` are the sample counts
+  of the block with and without its halo.
+
+The cost is not constant in the window size. Comparison-based exact medians
+cannot reach constant cost per output. Suomela (2014,
+[arXiv:1406.1717](https://arxiv.org/abs/1406.1717)) shows that 1-D median
+filtering with window `k` is equivalent to sorting blocks of length `k`. The
+paper attributes the direction "at least as hard as sorting" to prior work. Fixed
+bin histograms (Perreault and Hébert, 2007) are constant cost only for a
+fixed number of value levels. Exact ranks of float samples need one level per
+distinct sample. Per-column histograms would then need memory proportional
+to the image width times the number of distinct samples.
+
+Each block length is at least `max(size[i], 32)`, or the whole axis when
+the axis is shorter. Blocks along an axis have nearly equal lengths: only the
+last block can be shorter. These lengths change speed and memory only, never results.
+Each worker holds about 28 bytes per support sample for `float64`.
+For a `k x k` window and `k >= 32`, the support has up to about
+`(3 * k)^2` samples. Results do not depend on the number of threads.
 
 #### Rolling boxcar means
 
