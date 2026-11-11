@@ -13,8 +13,9 @@ import pytest
 from scripts import update_rust_notices as notices
 
 _ROOT = Path(__file__).resolve().parents[1]
-_MIT = (_ROOT / "LICENSE").read_bytes()
 _REDUCERS = _ROOT / "python/ndfiltrs/licenses/reducers-MIT.txt"
+# Any real MIT text works as a dependency fixture; ndfiltrs itself is BSD.
+_MIT = _REDUCERS.read_bytes()
 _REDUCERS_BSD = _ROOT / "python/ndfiltrs/licenses/reducers-BSD-3-Clause.txt"
 _SOURCE = "registry+https://github.com/rust-lang/crates.io-index"
 

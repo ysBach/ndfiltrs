@@ -7,7 +7,7 @@ name = "ndfiltrs"
 version = "0.1.0"
 description = "Fast NaN-aware N-dimensional filters for NumPy, implemented in Rust"
 readme = "README.md"
-license = "MIT"
+license = "BSD-3-Clause"
 license-files = ["LICENSE"]
 requires-python = ">=3.10"
 dependencies = ["numpy>=1.24"]

@@ -16,7 +16,7 @@ from collections.abc import Iterable, Mapping
 from pathlib import Path
 
 _ROOT = Path(__file__).resolve().parents[1]
-_LICENSE = b"MIT License\n\nCopyright 2026 Example\n"
+_LICENSE = b"BSD 3-Clause License\n\nCopyright (c) 2026, Example\n"
 
 
 def _toml_literal_fields(
@@ -50,11 +50,11 @@ _METADATA = (
     "Metadata-Version: 2.4\n"
     "Name: ndfiltrs\n"
     f"Version: {_VERSION}\n"
-    "License-Expression: MIT\n"
+    "License-Expression: BSD-3-Clause\n"
     "License-File: LICENSE\n"
 ).encode()
 _CRATE_MANIFEST = (
-    f'[package]\nname = "ndfiltrs"\nversion = "{_VERSION}"\nlicense = "MIT"\n'
+    f'[package]\nname = "ndfiltrs"\nversion = "{_VERSION}"\nlicense = "BSD-3-Clause"\n'
 ).encode()
 _WHEEL_LICENSE_NAME = f"{_DIST_INFO_ROOT}/licenses/LICENSE"
 
@@ -221,13 +221,13 @@ def test_artifact_license_verifier_rejects_missing_spdx_expression(
             "Metadata-Version: 2.4\n"
             "Name: ndfiltrs\n"
             f"Version: {_VERSION}\n"
-            "Classifier: License :: OSI Approved :: MIT License\n"
+            "Classifier: License :: OSI Approved :: BSD License\n"
             "License-File: LICENSE\n"
         ).encode(),
     )
     result = _run_verifier(paths)
     assert result.returncode != 0
-    assert "License-Expression: MIT" in result.stderr
+    assert "License-Expression: BSD-3-Clause" in result.stderr
 
 
 def test_artifact_license_verifier_accepts_wheel_only(tmp_path: Path) -> None:
@@ -331,7 +331,7 @@ def test_artifact_license_verifier_scopes_cargo_identity_to_package_table(
             "\n[package]\n"
             'name = "ndfiltrs"\n'
             f'version = "{_VERSION}"\n'
-            'license = "MIT"\n'
+            'license = "BSD-3-Clause"\n'
             "\n[bad]\n"
             'license = "GPL-3.0"\n'
         ).encode(),
@@ -352,7 +352,7 @@ def test_artifact_license_verifier_rejects_decoy_license_outside_package_table(
             f'version = "{_VERSION}"\n'
             'license = "GPL-3.0"\n'
             "\n[bad]\n"
-            'license = "MIT"\n'
+            'license = "BSD-3-Clause"\n'
         ).encode(),
     )
 
@@ -369,7 +369,7 @@ def test_artifact_license_verifier_rejects_wrong_cargo_identity(
         tmp_path,
         _LICENSE,
         crate_manifest=(
-            b'[package]\nname = "decoy"\nversion = "9.9.9"\nlicense = "MIT"\n'
+            b'[package]\nname = "decoy"\nversion = "9.9.9"\nlicense = "BSD-3-Clause"\n'
         ),
     )
     result = _run_verifier(paths)

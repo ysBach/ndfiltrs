@@ -1,4 +1,4 @@
-"""Verify MIT license identity and integrity in release artifacts."""
+"""Verify BSD-3-Clause license identity and integrity in release artifacts."""
 
 from __future__ import annotations
 
@@ -31,7 +31,7 @@ _PACKAGE_VERSION = next(
         for target in node.targets
     )
 )
-_LICENSE_EXPRESSION = "MIT"
+_LICENSE_EXPRESSION = "BSD-3-Clause"
 _ARCHIVE_ROOT = f"{_PACKAGE_NAME}-{_PACKAGE_VERSION}"
 _DIST_INFO_ROOT = f"{_PACKAGE_NAME}-{_PACKAGE_VERSION}.dist-info"
 
@@ -152,7 +152,7 @@ def _verify_python_metadata(contents: bytes, label: str) -> None:
     expressions = message.get_all("License-Expression", [])
     if expressions != [_LICENSE_EXPRESSION]:
         raise ArtifactLicenseError(
-            f"{label} metadata is missing License-Expression: MIT"
+            f"{label} metadata is missing License-Expression: {_LICENSE_EXPRESSION}"
         )
     license_files = message.get_all("License-File", [])
     if license_files != ["LICENSE"]:

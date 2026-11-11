@@ -19,14 +19,14 @@ from scripts.verify_artifact_licenses import (
 )
 from tests.test_artifact_licenses import _VERSION
 
-_LICENSE = b"MIT License\n\nCopyright 2026 Example\n"
+_LICENSE = b"BSD 3-Clause License\n\nCopyright (c) 2026, Example\n"
 _ARCHIVE_ROOT = f"ndfiltrs-{_VERSION}"
 _DIST_INFO_ROOT = f"{_ARCHIVE_ROOT}.dist-info"
 _METADATA = (
     "Metadata-Version: 2.4\n"
     "Name: ndfiltrs\n"
     f"Version: {_VERSION}\n"
-    "License-Expression: MIT\n"
+    "License-Expression: BSD-3-Clause\n"
     "License-File: LICENSE\n"
 ).encode()
 _WHEEL_LICENSE_NAME = f"{_DIST_INFO_ROOT}/licenses/LICENSE"
@@ -83,7 +83,8 @@ def _build_test_artifacts(
     crate_files: dict[str, bytes] = {
         f"{_ARCHIVE_ROOT}/LICENSE": _LICENSE,
         f"{_ARCHIVE_ROOT}/Cargo.toml": (
-            f'[package]\nname = "ndfiltrs"\nversion = "{_VERSION}"\nlicense = "MIT"\n'
+            f'[package]\nname = "ndfiltrs"\nversion = "{_VERSION}"\n'
+            'license = "BSD-3-Clause"\n'
         ).encode(),
     }
     for name, content in c_notices.items():
