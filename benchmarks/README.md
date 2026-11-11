@@ -160,6 +160,24 @@ The `copy=False` no-op result aliases input. Report it separately from copied
 output. The smaller image includes a full-image `nanmedian_filter` composition
 as an equivalent median baseline. Reports record source hashes and raw samples.
 
+## Compare variance propagation with Astropy
+
+Astropy is not a project dependency, so add it for this run only:
+
+```bash
+uv run --frozen --extra dev --with astropy python -m benchmarks.benchmark_variance --output /tmp/variance-threads-all.json
+```
+
+```bash
+RAYON_NUM_THREADS=1 uv run --frozen --extra dev --with astropy python -m benchmarks.benchmark_variance --output /tmp/variance-threads1.json
+```
+
+The script checks that each output agrees with repeated Astropy calls before
+timing. Add `--baseline /path/to/previous/ndfiltrs` to time `convolve` and
+`nanconvolve` against a prior build, alternating the call order. Add
+`--skip-astropy` to run only that comparison. See
+[variance timings](../docs/benchmarks.md#variance-propagation).
+
 ## Measure median filters and memory
 
 Run these commands from the repository root to prepare the project's `.venv`

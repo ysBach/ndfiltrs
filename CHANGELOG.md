@@ -20,6 +20,9 @@ NumPy, implemented in Rust.
     sigma clipping (`ClipConfig`).
   - `Convolution` with `WeightKernel` and `WeightPolicy`, and
     `separable_smooth`.
+  - `Convolution::apply_with_variance` propagates independent per-pixel
+    variance (`NoiseMap`), and `MatchedFilter` (`MatchedWeighting`,
+    `MatchedMaps`) maps template amplitude, its variance, and S/N.
   - `fixpix_linear`, `fixpix_median`, and `fixpix_mean` repair in place.
   - `variable_mean` / `variable_mean_into` with `VariableWindow`: means over
     per-pixel rectangular windows.
@@ -87,6 +90,10 @@ NumPy, implemented in Rust.
 - Weighted: `convolve` and `correlate` with any N-D kernel and `origin`
   shift. `nanconvolve` and `nancorrelate` divide by the weights of the
   samples that remain.
+- Noise: `convolve_variance` and `nanconvolve_variance` return the result
+  and its variance for independent pixel noise in one pass. Repeated boundary
+  pixels are grouped before squaring weights. `matched_filter` returns S/N,
+  amplitude, and amplitude variance, with inverse-variance or kernel weights.
 - Gaussian: `gaussian_filter` (smoothing and derivatives, optional
   `method="separable"`), `nangaussian_filter`, `gaussian_laplace`, and
   `gaussian_gradient_magnitude`. Use `axes=(-2, -1)` to filter each plane

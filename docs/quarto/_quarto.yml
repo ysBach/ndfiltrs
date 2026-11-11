@@ -88,6 +88,10 @@ quartodoc:
         - correlate
         - nanconvolve
         - nancorrelate
+        - convolve_variance
+        - nanconvolve_variance
+        - matched_filter
+        - MatchedFilterResult
     - title: Gaussian filters
       desc: Smoothing and derivatives with explicitly controlled support.
       contents:

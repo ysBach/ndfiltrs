@@ -31,6 +31,8 @@ Filters change every output position. Use
 | --- | --- | --- |
 | `convolve`, `correlate` | Raw weighted sum | Finite real weights. Negative and zero values allowed |
 | `nanconvolve`, `nancorrelate` | Weighted mean after omission | Finite nonnegative weights with at least one positive entry |
+| `convolve_variance`, `nanconvolve_variance` | Either result above and its propagated variance | As `convolve` or `nanconvolve` |
+| `matched_filter` | Template amplitude, its variance, and signal-to-noise ratio | Finite real weights with a nonzero entry |
 | `gaussian_filter` | Gaussian smoothing or a Gaussian derivative | Generated from `sigma`, `order`, and support |
 | `nangaussian_filter` | Gaussian weighted mean after omission | Smoothing only. No derivative order |
 | `gaussian_laplace`, `gaussian_gradient_magnitude` | Gaussian Laplacian or gradient magnitude | Derivatives along selected axes |
@@ -110,6 +112,167 @@ Signed derivative kernels belong in `convolve` or `correlate`, because normalizi
 their retained weights would change the derivative definition. For derivatives
 of data with missing samples, use `nansavgol_filter`, which refits a local
 polynomial to the retained samples (see [Savitzky-Golay filters](savgol.md)).
+
+## Variance propagation and matched filtering
+
+```python
+value, variance = nf.convolve_variance(image, var, weights)
+smoothed, smoothed_var = nf.nanconvolve_variance(image, var, psf)
+snr, flux, flux_var = nf.matched_filter(image - background, var, psf)
+```
+
+The second argument holds one variance per pixel. Pass an inverse-variance
+weight map with `noise_type="inverse_variance"`. It must have the shape of
+the data and is cast to the data dtype. Each function computes all of its
+outputs in one pass over the kernel taps.
+
+### Assumptions
+
+- Noise is independent from pixel to pixel. Covariance between input pixels,
+  for example after resampling, is not modeled. The propagated variance then
+  underestimates the true variance.
+- The set of retained samples (the NaN mask) does not depend on the noise
+  values.
+- Weights are exact constants.
+
+### Raw weighted sums
+
+For one output, tap $j$ reads source pixel $p(j)$. Group the taps by pixel:
+
+$$
+y = \sum_j w_j x_{p(j)} = \sum_p c_p x_p,
+\qquad
+c_p = \sum_{j:\,p(j)=p} w_j .
+$$
+
+For independent $x_p$ with variance $v_p$,
+$\operatorname{Var}(y)=\sum_p c_p^2 v_p$. Away from the edges each pixel is
+read once, so this is $\sum_j w_j^2 v_{p(j)}$. The `reflect`, `nearest`,
+`mirror`, and `wrap` modes can read one pixel through several taps near an
+edge. Those taps are perfectly correlated, so their weights add before
+squaring. For example, with `reflect`, weights `[3., 2., 1.]`, and variances
+`[1., 10., 100.]`, the first output reads pixel 0 with weights 1 and 2. Its
+variance is $(1+2)^2\cdot 1 + 3^2\cdot 10 = 99$, not $1+4+90$. A
+constant-mode exterior sample is an exact constant, so it has zero variance.
+
+`convolve_variance` returns `convolve` (or `correlate`, with `correlate=True`)
+bitwise as its first output.
+
+### Normalized smoothing
+
+`nanconvolve_variance` divides by the retained weight sum $W=\sum_j w_j$. For
+a fixed retained set, $W$ is a constant, so
+
+$$
+y = \frac{1}{W}\sum_p c_p x_p,
+\qquad
+\operatorname{Var}(y) = \frac{1}{W^2}\sum_p c_p^2 v_p .
+$$
+
+For example, weights `[1., 2., 1.]` around data `[1., NaN, 5.]` with
+variances `[2., 7., 6.]` give $y=3$ and $\operatorname{Var}(y)=(2+6)/2^2=2$.
+Where the noise omits no sample, the first output equals `nanconvolve` (or
+`nancorrelate`) bitwise.
+
+### Matched filter
+
+Model the data around each position as $x_j = A\,w_j + n_j$, with template
+$w$ and independent zero-mean noise $n_j$ of variance $v_j$. `matched_filter`
+correlates the template, so it keeps the orientation of a PSF image. With
+coefficients $a_j$ over the retained samples:
+
+$$
+N = \sum_j a_j x_j,
+\qquad
+\hat A = \frac{N}{S},\quad S = \sum_j w_j a_j,
+\qquad
+\operatorname{Var}(\hat A) = \frac{\operatorname{Var}(N)}{S^2},
+\qquad
+\mathrm{snr} = \frac{N}{\sqrt{\operatorname{Var}(N)}} .
+$$
+
+$\operatorname{Var}(N) = \sum_p \bigl(\sum_{j:\,p(j)=p} a_j\bigr)^2 v_p$ uses
+the same grouping as above. $E[N] = A S$, so $\hat A$ is unbiased.
+
+- `weighting="inverse_variance"` (default): $a_j = w_j / v_j$. This
+  minimizes $\chi^2=\sum_j (x_j - A w_j)^2 / v_j$. $\hat A$ is then the
+  minimum-variance linear unbiased estimate, with
+  $\operatorname{Var}(\hat A) = 1/S = 1/\sum_j (w_j^2/v_j)$ away from repeated
+  boundary pixels.
+- `weighting="kernel"`: $a_j = w_j$, so $\hat A = \sum_j w_j x_j / \sum_j w_j^2$.
+  Its `snr` equals $y/\sqrt{\operatorname{Var}(y)}$ for either function above:
+  the normalization cancels.
+
+With uniform variance both weightings give the same `snr` and amplitude.
+Under pure noise, `snr` has unit variance, so a threshold on `snr` is in
+units of the standard deviation of the filtered image. If the template sums
+to one, $\hat A$ is the total flux of a point source with that PSF.
+The template may have signed weights.
+
+### Invalid and special values
+
+| Case | `convolve_variance` | `nanconvolve_variance` | `matched_filter` |
+| --- | --- | --- | --- |
+| NaN data | All outputs NaN | Sample omitted | Sample omitted |
+| NaN or negative noise | Variance NaN, value unchanged | Sample omitted | Sample omitted |
+| Infinite variance (inverse variance `0`) | Variance infinite | Sample omitted | Sample omitted |
+| Zero variance | Exact sample | Exact sample | Exact (`kernel`); omitted (`inverse_variance`) |
+| Constant-mode exterior | Zero variance | Zero variance; omitted if `cval` is NaN | As zero variance; omitted if `cval` is NaN |
+| Infinite data | Value infinite, finite variance | Same, unless `ignore_inf=True` | Same, unless `ignore_inf=True` |
+
+An omitted sample leaves both the data sum and the variance sum, and it does
+not count toward `min_count`. Under inverse-variance weighting, a
+zero-variance sample would have infinite weight, so it is omitted. A NaN
+estimate has NaN variance and `snr`. When the variance is zero, `snr` is
+infinite (or NaN for a zero numerator).
+
+### Arithmetic
+
+Sums use compensated `float64` accumulation. Products or sums that overflow
+or underflow are recomputed with binary scaling, so the variance of finite
+inputs is finite whenever it fits in `float64`. Results are cast to the data
+dtype once. Exact rounding is not promised. Interior outputs stream their
+sums. Edge outputs store their taps and sort them by source pixel to group
+repeats.
+
+### Comparison with SExtractor detection filtering
+
+This comparison uses the SExtractor source at commit
+[`90296de`](https://github.com/astromatic/sextractor/tree/90296de1a23607f2501864d4d6c1f757755f0ee7)
+and its [weighting documentation](https://sextractor.readthedocs.io/en/latest/Weighting.html).
+
+What matches:
+
+- SExtractor filters the detection image with the plain mask, without
+  dividing by the variance. That corresponds to `weighting="kernel"`.
+- Its `convolve()` in `src/filter.c` adds `mask[dy][dx]` times the pixel at
+  `(y + dy - h/2, x + dx - w/2)` without flipping the mask. That is
+  correlation, as in `matched_filter`.
+- With a weight map, SExtractor also filters the variance map and
+  thresholds each pixel against the filtered variance (`src/scan.c`).
+  Weight maps become variances internally (`weight_to_var()` in
+  `src/weight.c`).
+
+What differs:
+
+- SExtractor filters the variance map with the same mask $w$, not $w^2$. Its
+  threshold is `DETECT_THRESH * sqrt(sum_j w_j v_j)`. The variance of the
+  filtered image is $\sum_j w_j^2 v_j$. The SExtractor documentation states
+  that `DETECT_THRESH` is in units of the background standard deviation, and
+  `varnorm` (computed in `getconv()`) is not used anywhere else in `src/`. For
+  uniform $v$ and a mask with unit sum, a SExtractor threshold $t$ equals an
+  `snr` threshold $t/\sqrt{\sum_j w_j^2}$. With varying $v$, the two
+  thresholds are not proportional.
+- SExtractor has no inverse-variance weighting in detection filtering.
+- With the default normalization, SExtractor divides the mask by
+  $\sum_j |w_j|$ (by $\sqrt{\sum_j w_j^2}$ for zero-sum masks). `snr` does
+  not depend on the template scale. The amplitude scales inversely with it.
+- At image edges, SExtractor skips out-of-image taps without renormalizing.
+  This equals `mode="constant", cval=0.0` with `weighting="kernel"`. It has
+  no NaN handling. A zero weight becomes a variance of `BIG` (`1e30`), which
+  raises the threshold of every neighbor that the filter reaches.
+  ndfiltrs omits such samples instead.
+- SExtractor accumulates in single precision.
 
 ## Gaussian smoothing and derivatives
 

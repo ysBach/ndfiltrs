@@ -173,6 +173,9 @@ Gaussian functions also include `gaussian_gradient_magnitude` and selected-axis
 filtering. Smoothing accepts `method="separable"` to avoid a dense product
 kernel. The default direct method also supports derivatives and underflowing
 product weights. Axis grouping can change floating-point rounding.
+`convolve_variance` and `nanconvolve_variance` also return the propagated
+variance for independent pixel noise, and `matched_filter` returns a template
+S/N map with inverse-variance weights.
 See [convolution and Gaussian semantics](docs/convolution.md) for orientation,
 support, derivative conventions, and numerical limits.
 

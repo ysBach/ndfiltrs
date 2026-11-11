@@ -163,6 +163,49 @@ The implementation still needs work to compete with
 SciPy. With four ndfiltrs workers, the 63×63 case takes 1.2 ms, compared with
 0.37 ms for SciPy in that run.
 
+## Variance propagation
+
+`convolve_variance` and `nanconvolve_variance` compute the value and its
+variance in one pass. Astropy needs one `astropy.convolution.convolve` call
+per sum: two for a raw sum (data with $w$, variance with $w^2$), and three for
+the NaN-omitting mean (data with NaN interpolation, $\sum w^2 v$, and
+$\sum w$ over valid pixels). Astropy 8.0.2 runs one thread (its source sets
+`n_threads = 1`).
+
+Times are median wall times in seconds for float64 images, rounded to two
+significant figures, with five repetitions (three for one ndfiltrs thread).
+They were measured on 12 November 2026 on an Apple M4 Pro (10 performance
+and 4 efficiency cores), with the software listed under the measurement setup.
+Boundaries are `mode="constant"` with `cval=0.0` (raw sum) or `cval=np.nan`
+(mean), and Astropy `boundary="fill"` with the same fill value. The mean
+case has 10% NaN pixels. Kernels: Gaussian with FWHM 3 px on 13×13, and
+Moffat with FWHM 4 px and β = 2.5 on 25×25. Before timing, each output
+agreed with Astropy to within 4e-15 of the array's largest magnitude.
+
+| Image | Kernel | Case | ndfiltrs, 14 threads | ndfiltrs, 1 thread | Astropy |
+| --- | --- | --- | ---: | ---: | ---: |
+| 2048² | Gaussian 13×13 | Raw sum | 0.34 | 2.8 | 0.52 |
+| 2048² | Gaussian 13×13 | NaN mean | 0.43 | 3.8 | 1.3 |
+| 2048² | Moffat 25×25 | Raw sum | 1.6 | 10 | 2.6 |
+| 2048² | Moffat 25×25 | NaN mean | 2.1 | 14 | 6.1 |
+| 4096² | Gaussian 13×13 | Raw sum | 1.4 | 11 | 2.2 |
+| 4096² | Gaussian 13×13 | NaN mean | 2.1 | 16 | 5.3 |
+| 4096² | Moffat 25×25 | Raw sum | 6.0 | 41 | 10 |
+| 4096² | Moffat 25×25 | NaN mean | 7.0 | 63 | 25 |
+
+With 14 threads, ndfiltrs is 1.5× to 3.6× faster than the repeated Astropy
+calls. With one thread it is 1.7× to 5.3× slower. Per kernel tap, its
+compensated accumulation with overflow checks costs about 4 ns for the raw
+sum with variance, against about 0.4 ns for each Astropy pass. A second
+Astropy run of the largest case took 38 s instead of 25 s, so the machine
+load varied. Other sessions shared the machine during these runs.
+
+Adding the variance path did not change the code of the existing
+convolution kernel. With one thread on a 1024² image, `nanconvolve` with the
+Moffat kernel took 1.94 s before and after the change (current/previous
+median ratio 0.999). Other comparisons stayed within the run-to-run spread
+under a load average near 20.
+
 ## Measurement setup
 
 The measurements date from 12 October 2026. The environment used macOS 26.6
