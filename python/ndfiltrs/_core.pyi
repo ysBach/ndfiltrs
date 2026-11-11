@@ -57,6 +57,20 @@ def convolve(
     normalize: bool = False,
 ) -> NDArray[np.float32] | NDArray[np.float64]: ...
 def get_num_threads() -> int: ...
+def savgol_filter(
+    array: NDArray[np.float32] | NDArray[np.float64],
+    window: list[int],
+    basis: Literal["total", "per_axis"],
+    degrees: list[int],
+    derivative: list[int],
+    delta: list[float],
+    weights: list[float] | None,
+    mode: list[str],
+    cval: float,
+    omit_nan: bool,
+    ignore_inf: bool,
+    min_count: int,
+) -> NDArray[np.float32] | NDArray[np.float64]: ...
 def separable_smooth(
     array: NDArray[np.float32] | NDArray[np.float64],
     axes: tuple[int, ...],

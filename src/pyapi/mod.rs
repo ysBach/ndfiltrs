@@ -2,6 +2,7 @@ mod convolution;
 mod filter;
 mod repair;
 mod robust;
+mod savgol;
 mod separable;
 
 use pyo3::prelude::*;
@@ -11,6 +12,7 @@ pub(crate) fn _core(module: &Bound<'_, PyModule>) -> PyResult<()> {
     module.add_function(wrap_pyfunction!(convolution::convolve, module)?)?;
     module.add_function(wrap_pyfunction!(separable::separable_smooth, module)?)?;
     module.add_function(wrap_pyfunction!(robust::robust_filter, module)?)?;
+    module.add_function(wrap_pyfunction!(savgol::savgol_filter, module)?)?;
     module.add_function(wrap_pyfunction!(repair::fixpix, module)?)?;
     module.add_function(wrap_pyfunction!(repair::fixpix_median, module)?)?;
     module.add_function(wrap_pyfunction!(repair::fixpix_mean, module)?)?;

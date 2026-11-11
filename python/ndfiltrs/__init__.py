@@ -48,6 +48,7 @@ from ._robust import (
     percentile_filter,
     sigma_clipped_filter,
 )
+from ._savgol import nansavgol_filter, savgol_filter
 
 __all__ = [
     "biweight_location_filter",
@@ -85,11 +86,13 @@ __all__ = [
     "nanmin_filter",
     "nanmode_filter",
     "nanpercentile_filter",
+    "nansavgol_filter",
     "nanstd_filter",
     "nanvar_filter",
     "percentile_filter",
     "prewitt",
     "rank_filter",
+    "savgol_filter",
     "sigma_clipped_filter",
     "sobel",
     "std_filter",
