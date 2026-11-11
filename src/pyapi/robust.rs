@@ -6,13 +6,14 @@ use reducers::Float;
 use super::filter::{allocate_output, python_error, WindowSpec};
 use crate::location::ModeEstimator;
 use crate::robust::{
-    robust_into, Center, ClipConfig, RobustConfig, RobustReduction, SamplePolicy, Spread, Statistic,
+    robust_into, ClipCenter, ClipConfig, ClipSpread, ClipStatistic, RobustConfig, RobustReduction,
+    SamplePolicy,
 };
 
-fn parse_center(name: &str) -> PyResult<Center> {
+fn parse_center(name: &str) -> PyResult<ClipCenter> {
     match name {
-        "mean" => Ok(Center::Mean),
-        "median" => Ok(Center::Median),
+        "mean" => Ok(ClipCenter::Mean),
+        "median" => Ok(ClipCenter::Median),
         _ => Err(PyValueError::new_err("center must be 'mean' or 'median'")),
     }
 }
@@ -144,14 +145,14 @@ pub(crate) fn robust_filter<'py>(
             maxiters,
             center: parse_center(center)?,
             spread: match spread {
-                "std" => Spread::Std,
-                "mad" => Spread::Mad,
+                "std" => ClipSpread::Std,
+                "mad" => ClipSpread::Mad,
                 _ => return Err(PyValueError::new_err("spread must be 'std' or 'mad'")),
             },
             statistic: match kind {
-                "sigma_mean" => Statistic::Mean,
-                "sigma_median" => Statistic::Median,
-                _ => Statistic::Mode(parse_estimator(estimator)?, pearson),
+                "sigma_mean" => ClipStatistic::Mean,
+                "sigma_median" => ClipStatistic::Median,
+                _ => ClipStatistic::Mode(parse_estimator(estimator)?, pearson),
             },
             min_count,
         }),

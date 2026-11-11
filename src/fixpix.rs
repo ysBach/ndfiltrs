@@ -4,11 +4,11 @@ use std::collections::HashSet;
 
 use reducers::Float;
 
-use crate::error::KernelError;
+use crate::error::Error;
 
 /// Compact nonzero mask bytes in C order, skipping empty machine words.
 #[cfg(any(test, feature = "python"))]
-pub(crate) fn masked_positions(flags: &[u8]) -> Result<Vec<usize>, KernelError> {
+pub(crate) fn masked_positions(flags: &[u8]) -> Result<Vec<usize>, Error> {
     const WIDTH: usize = std::mem::size_of::<usize>();
     let mut positions = Vec::new();
     let mut chunks = flags.chunks_exact(WIDTH);
@@ -18,7 +18,7 @@ pub(crate) fn masked_positions(flags: &[u8]) -> Result<Vec<usize>, KernelError> 
         }
         for (byte_index, &flag) in chunk.iter().enumerate() {
             if flag != 0 {
-                positions.try_reserve(1).map_err(|_| KernelError::Memory)?;
+                positions.try_reserve(1).map_err(|_| Error::Memory)?;
                 positions.push(word_index * WIDTH + byte_index);
             }
         }
@@ -27,7 +27,7 @@ pub(crate) fn masked_positions(flags: &[u8]) -> Result<Vec<usize>, KernelError> 
     let start = flags.len() - remainder.len();
     for (index, &flag) in remainder.iter().enumerate() {
         if flag != 0 {
-            positions.try_reserve(1).map_err(|_| KernelError::Memory)?;
+            positions.try_reserve(1).map_err(|_| Error::Memory)?;
             positions.push(start + index);
         }
     }
@@ -50,15 +50,15 @@ pub(crate) fn fixpix<T: Float>(
     shape: &[usize],
     positions: &[usize],
     priority: &[usize],
-) -> Result<(), KernelError> {
+) -> Result<(), Error> {
     if shape.is_empty() || priority.len() != shape.len() {
-        return Err(KernelError::InvalidConfiguration(
+        return Err(Error::InvalidConfiguration(
             "priority must contain every array axis exactly once",
         ));
     }
     for (index, &axis) in priority.iter().enumerate() {
         if axis >= shape.len() || priority[..index].contains(&axis) {
-            return Err(KernelError::InvalidConfiguration(
+            return Err(Error::InvalidConfiguration(
                 "priority must contain every array axis exactly once",
             ));
         }
@@ -66,22 +66,20 @@ pub(crate) fn fixpix<T: Float>(
     let mut strides = Vec::new();
     strides
         .try_reserve_exact(shape.len())
-        .map_err(|_| KernelError::Memory)?;
+        .map_err(|_| Error::Memory)?;
     strides.resize(shape.len(), 0);
     let mut total = 1_usize;
     for axis in (0..shape.len()).rev() {
         strides[axis] = total;
-        total = total
-            .checked_mul(shape[axis])
-            .ok_or(KernelError::Overflow)?;
+        total = total.checked_mul(shape[axis]).ok_or(Error::Overflow)?;
     }
     if total != data.len() {
-        return Err(KernelError::LengthMismatch);
+        return Err(Error::LengthMismatch);
     }
     if positions.last().is_some_and(|&last| last >= total)
         || positions.windows(2).any(|pair| pair[0] >= pair[1])
     {
-        return Err(KernelError::InvalidConfiguration(
+        return Err(Error::InvalidConfiguration(
             "masked offsets must be sorted, unique, and within the array",
         ));
     }
@@ -94,7 +92,7 @@ pub(crate) fn fixpix<T: Float>(
     let mut selected = Vec::new();
     selected
         .try_reserve_exact(count)
-        .map_err(|_| KernelError::Memory)?;
+        .map_err(|_| Error::Memory)?;
     selected.resize(
         count,
         Span {
@@ -107,9 +105,7 @@ pub(crate) fn fixpix<T: Float>(
         },
     );
     let mut order = Vec::new();
-    order
-        .try_reserve_exact(count)
-        .map_err(|_| KernelError::Memory)?;
+    order.try_reserve_exact(count).map_err(|_| Error::Memory)?;
 
     for &axis in priority {
         let stride = strides[axis];
@@ -158,7 +154,7 @@ pub(crate) fn fixpix<T: Float>(
     // retained spans in that same order. Keeping the first or repairing each
     // masked coordinate independently would change crossing-run overwrites.
     let mut seen = HashSet::new();
-    seen.try_reserve(count).map_err(|_| KernelError::Memory)?;
+    seen.try_reserve(count).map_err(|_| Error::Memory)?;
     for span in selected.iter_mut().rev() {
         if span.length == span.extent || !seen.insert((span.axis, span.start)) {
             span.length = 0;

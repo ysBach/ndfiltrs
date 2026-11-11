@@ -1,10 +1,9 @@
-#[cfg(any(test, feature = "python"))]
 use rayon::prelude::*;
 use reducers::Float;
 
 #[cfg(any(test, feature = "benchmark", feature = "test-hooks"))]
 use crate::boundary::BoundaryMode;
-use crate::error::KernelError;
+use crate::error::Error;
 use crate::median_network::NetworkFloat;
 use crate::reduction::{InvalidPolicy, Reduction};
 use crate::window::Window;
@@ -26,7 +25,7 @@ impl<T: Copy> FilterConfig<T> {
         mode: Vec<BoundaryMode>,
         cval: T,
         reduction: Reduction,
-    ) -> Result<Self, KernelError> {
+    ) -> Result<Self, Error> {
         Self::from_window(Window::rectangular(shape, &size, mode)?, cval, reduction)
     }
 
@@ -34,10 +33,10 @@ impl<T: Copy> FilterConfig<T> {
         window: Window,
         cval: T,
         reduction: Reduction,
-    ) -> Result<Self, KernelError> {
+    ) -> Result<Self, Error> {
         if let InvalidPolicy::Omit { min_count, .. } = reduction.policy() {
             if min_count == 0 || min_count > window.count() {
-                return Err(KernelError::InvalidConfiguration(
+                return Err(Error::InvalidConfiguration(
                     "min_count must be between 1 and the number of window elements",
                 ));
             }
@@ -65,12 +64,10 @@ pub(crate) fn filter_range<T: NetworkFloat>(
     config: &FilterConfig<T>,
     start: usize,
     output: &mut [T],
-) -> Result<(), KernelError> {
-    let end = start
-        .checked_add(output.len())
-        .ok_or(KernelError::Overflow)?;
+) -> Result<(), Error> {
+    let end = start.checked_add(output.len()).ok_or(Error::Overflow)?;
     if input.len() != config.output_len() || end > config.output_len() {
-        return Err(KernelError::LengthMismatch);
+        return Err(Error::LengthMismatch);
     }
     let Some(network) = &config.median_network else {
         return filter_offsets(input, config, start..end, output);
@@ -94,16 +91,13 @@ pub(crate) fn filter_range<T: NetworkFloat>(
             offset += width;
             continue;
         }
-        let length = network
-            .wires()
-            .checked_mul(width)
-            .ok_or(KernelError::Overflow)?;
+        let length = network.wires().checked_mul(width).ok_or(Error::Overflow)?;
         keys.try_reserve(length.saturating_sub(keys.len()))
-            .map_err(|_| KernelError::Memory)?;
+            .map_err(|_| Error::Memory)?;
         keys.resize(length, T::nan().sort_key());
         retained
             .try_reserve(width.saturating_sub(retained.len()))
-            .map_err(|_| KernelError::Memory)?;
+            .map_err(|_| Error::Memory)?;
         retained.resize(width, 0);
         retained.fill(0);
         config
@@ -133,16 +127,16 @@ fn filter_offsets<T: Float>(
     config: &FilterConfig<T>,
     offsets: impl ExactSizeIterator<Item = usize>,
     output: &mut [T],
-) -> Result<(), KernelError> {
+) -> Result<(), Error> {
     if input.len() != config.output_len() || offsets.len() != output.len() {
-        return Err(KernelError::LengthMismatch);
+        return Err(Error::LengthMismatch);
     }
     let mut index = vec![0; config.window.rank()];
     let mut scratch = Vec::new();
     if !matches!(config.reduction, Reduction::Mean(_)) {
         scratch
             .try_reserve_exact(config.window.count())
-            .map_err(|_| KernelError::Memory)?;
+            .map_err(|_| Error::Memory)?;
     }
     for (offset, destination) in offsets.zip(output.iter_mut()) {
         if let Reduction::Mean(policy) = config.reduction {
@@ -160,7 +154,7 @@ fn filter_offsets<T: Float>(
             if scratch.capacity() < config.window.count() {
                 scratch
                     .try_reserve_exact(config.window.count())
-                    .map_err(|_| KernelError::Memory)?;
+                    .map_err(|_| Error::Memory)?;
             }
         }
         scratch.clear();
@@ -178,17 +172,16 @@ fn filter_offsets<T: Float>(
 }
 
 /// Evaluate only masked windows, excluding every originally masked sample.
-#[cfg(any(test, feature = "python"))]
 pub(crate) fn repair_median<T: Float + Send + Sync>(
     data: &mut [T],
     config: &FilterConfig<T>,
     positions: &[usize],
-) -> Result<(), KernelError> {
+) -> Result<(), Error> {
     if data.len() != config.output_len()
         || positions.last().is_some_and(|&last| last >= data.len())
         || positions.windows(2).any(|pair| pair[0] >= pair[1])
     {
-        return Err(KernelError::LengthMismatch);
+        return Err(Error::LengthMismatch);
     }
     if positions.is_empty() {
         return Ok(());
@@ -196,7 +189,7 @@ pub(crate) fn repair_median<T: Float + Send + Sync>(
     let mut estimates = Vec::new();
     estimates
         .try_reserve_exact(positions.len())
-        .map_err(|_| KernelError::Memory)?;
+        .map_err(|_| Error::Memory)?;
     estimates.resize(positions.len(), T::nan());
     // The owned output doubles as the snapshot. All estimates are computed
     // before any are scattered, so repaired values cannot enter a window.
@@ -225,14 +218,14 @@ pub(crate) fn repair_median<T: Float + Send + Sync>(
 pub(crate) fn filter_nd_serial<T: NetworkFloat>(
     input: &[T],
     config: &FilterConfig<T>,
-) -> Result<Vec<T>, KernelError> {
+) -> Result<Vec<T>, Error> {
     if input.len() != config.output_len() {
-        return Err(KernelError::LengthMismatch);
+        return Err(Error::LengthMismatch);
     }
     let mut output = Vec::new();
     output
         .try_reserve_exact(config.output_len())
-        .map_err(|_| KernelError::Memory)?;
+        .map_err(|_| Error::Memory)?;
     output.resize(config.output_len(), T::nan());
     if config.output_len() > 0 {
         filter_range(input, config, 0, &mut output)?;

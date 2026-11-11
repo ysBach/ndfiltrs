@@ -2,20 +2,34 @@ use rayon::prelude::*;
 use reducers::Float;
 
 use crate::boundary::{map_index, BoundaryMode};
-use crate::error::KernelError;
+use crate::error::Error;
 use crate::mean::Sum;
 
-#[derive(Clone, Copy, Debug)]
-pub(crate) enum WeightPolicy {
+/// How a [`Convolution`] combines weighted samples.
+///
+/// [`Convolution`]: crate::Convolution
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[non_exhaustive]
+pub enum WeightPolicy {
+    /// Plain weighted sum, as `scipy.ndimage.convolve`. Any NaN sample in the
+    /// support gives NaN. Weights may have any sign.
     Sum,
+    /// Weighted mean: the weighted sum divided by the sum of the weights of
+    /// the samples used. Weights must be nonnegative with a positive entry.
     Normalize {
+        /// Drop NaN samples (as Astropy's `convolve`). When `false`, a NaN
+        /// sample gives NaN.
         omit_nan: bool,
+        /// Also drop infinite samples. Requires `omit_nan`.
         ignore_inf: bool,
+        /// Smallest number of positive-weight samples used for a finite
+        /// result. Must be `1` unless `omit_nan`.
         min_count: usize,
     },
 }
 
 /// Validated geometry with zero-weight taps removed before sampling.
+#[derive(Clone, Debug)]
 pub(crate) struct ConvolutionConfig<T> {
     shape: Vec<usize>,
     strides: Vec<usize>,
@@ -30,22 +44,22 @@ pub(crate) struct ConvolutionConfig<T> {
     output_len: usize,
 }
 
-fn checked_product(shape: &[usize]) -> Result<usize, KernelError> {
+fn checked_product(shape: &[usize]) -> Result<usize, Error> {
     shape.iter().try_fold(1usize, |product, &length| {
-        product.checked_mul(length).ok_or(KernelError::Overflow)
+        product.checked_mul(length).ok_or(Error::Overflow)
     })
 }
 
-fn strides(shape: &[usize]) -> Result<Vec<usize>, KernelError> {
+fn strides(shape: &[usize]) -> Result<Vec<usize>, Error> {
     let mut result = Vec::new();
     result
         .try_reserve_exact(shape.len())
-        .map_err(|_| KernelError::Memory)?;
+        .map_err(|_| Error::Memory)?;
     result.resize(shape.len(), 1usize);
     for axis in (0..shape.len().saturating_sub(1)).rev() {
         result[axis] = result[axis + 1]
             .checked_mul(shape[axis + 1])
-            .ok_or(KernelError::Overflow)?;
+            .ok_or(Error::Overflow)?;
     }
     Ok(result)
 }
@@ -61,28 +75,28 @@ impl<T: Copy> ConvolutionConfig<T> {
         origin: Vec<isize>,
         correlate: bool,
         policy: WeightPolicy,
-    ) -> Result<Self, KernelError> {
+    ) -> Result<Self, Error> {
         let rank = shape.len();
         if rank == 0 {
-            return Err(KernelError::InvalidConfiguration(
+            return Err(Error::InvalidConfiguration(
                 "convolution requires at least one dimension",
             ));
         }
         if kernel_shape.len() != rank || modes.len() != rank || origin.len() != rank {
-            return Err(KernelError::InvalidConfiguration(
+            return Err(Error::InvalidConfiguration(
                 "array, weights, mode, and origin must have equal rank",
             ));
         }
         if kernel_shape.contains(&0) {
-            return Err(KernelError::InvalidConfiguration(
+            return Err(Error::InvalidConfiguration(
                 "weights must have nonempty dimensions",
             ));
         }
         if checked_product(&kernel_shape)? != weights.len() {
-            return Err(KernelError::LengthMismatch);
+            return Err(Error::LengthMismatch);
         }
         if weights.iter().any(|weight| !weight.is_finite()) {
-            return Err(KernelError::InvalidConfiguration(
+            return Err(Error::InvalidConfiguration(
                 "weights must contain only finite values",
             ));
         }
@@ -94,30 +108,28 @@ impl<T: Copy> ConvolutionConfig<T> {
         } = policy
         {
             if !omit_nan && (ignore_inf || min_count != 1) {
-                return Err(KernelError::InvalidConfiguration(
+                return Err(Error::InvalidConfiguration(
                     "ignore_inf and min_count require NaN omission",
                 ));
             }
             if weights.iter().any(|&weight| weight < 0.0) || count == 0 {
-                return Err(KernelError::InvalidConfiguration(
+                return Err(Error::InvalidConfiguration(
                     "normalized weights must be nonnegative with a positive entry",
                 ));
             }
             if min_count == 0 || min_count > count {
-                return Err(KernelError::InvalidConfiguration(
+                return Err(Error::InvalidConfiguration(
                     "min_count must be between one and the number of positive weights",
                 ));
             }
         }
         let mut anchors = Vec::new();
-        anchors
-            .try_reserve_exact(rank)
-            .map_err(|_| KernelError::Memory)?;
+        anchors.try_reserve_exact(rank).map_err(|_| Error::Memory)?;
         for (&length, &shift) in kernel_shape.iter().zip(&origin) {
-            let length = i128::try_from(length).map_err(|_| KernelError::Overflow)?;
+            let length = i128::try_from(length).map_err(|_| Error::Overflow)?;
             let anchor = length / 2 + shift as i128;
             if !(0..length).contains(&anchor) {
-                return Err(KernelError::InvalidConfiguration(
+                return Err(Error::InvalidConfiguration(
                     "origin must keep the kernel center inside its dimensions",
                 ));
             }
@@ -127,11 +139,11 @@ impl<T: Copy> ConvolutionConfig<T> {
         let mut active_weights = Vec::new();
         active_weights
             .try_reserve_exact(count)
-            .map_err(|_| KernelError::Memory)?;
+            .map_err(|_| Error::Memory)?;
         let mut offsets = Vec::new();
         offsets
-            .try_reserve_exact(count.checked_mul(rank).ok_or(KernelError::Overflow)?)
-            .map_err(|_| KernelError::Memory)?;
+            .try_reserve_exact(count.checked_mul(rank).ok_or(Error::Overflow)?)
+            .map_err(|_| Error::Memory)?;
         for (index, weight) in weights.into_iter().enumerate() {
             if weight == 0.0 {
                 continue;
@@ -149,7 +161,7 @@ impl<T: Copy> ConvolutionConfig<T> {
         let mut flat_offsets = Vec::new();
         flat_offsets
             .try_reserve_exact(count)
-            .map_err(|_| KernelError::Memory)?;
+            .map_err(|_| Error::Memory)?;
         let mut low = vec![0; rank];
         let mut high = vec![0; rank];
         for tap in offsets.chunks_exact(rank) {
@@ -160,7 +172,7 @@ impl<T: Copy> ConvolutionConfig<T> {
                 flat = tap[axis]
                     .checked_mul(array_strides[axis] as i128)
                     .and_then(|step| flat.checked_add(step))
-                    .ok_or(KernelError::Overflow)?;
+                    .ok_or(Error::Overflow)?;
             }
             // Huge supports can have no interior but still valid mapped edges.
             // An unrepresentable displacement disables only the interior path.
@@ -378,12 +390,12 @@ struct Scratch {
 }
 
 impl Scratch {
-    fn new<T>(config: &ConvolutionConfig<T>) -> Result<Self, KernelError> {
+    fn new<T>(config: &ConvolutionConfig<T>) -> Result<Self, Error> {
         let rank = config.shape.len();
         let mut coordinates = Vec::new();
         coordinates
             .try_reserve_exact(rank)
-            .map_err(|_| KernelError::Memory)?;
+            .map_err(|_| Error::Memory)?;
         coordinates.resize(rank, 0usize);
         Ok(Self {
             coordinates,
@@ -401,7 +413,7 @@ fn convolve_at<T: Float, const BUFFERED: bool>(
     config: &ConvolutionConfig<T>,
     flat: usize,
     scratch: &mut Scratch,
-) -> Result<T, KernelError> {
+) -> Result<T, Error> {
     let rank = config.shape.len();
     let Scratch { coordinates, pairs } = scratch;
     let mut remainder = flat;
@@ -417,7 +429,7 @@ fn convolve_at<T: Float, const BUFFERED: bool>(
     if BUFFERED {
         pairs
             .try_reserve(config.weights.len())
-            .map_err(|_| KernelError::Memory)?;
+            .map_err(|_| Error::Memory)?;
     }
     let normalize = matches!(config.policy, WeightPolicy::Normalize { .. });
     let mut accumulator = WeightedSum::new(normalize);
@@ -440,16 +452,16 @@ fn convolve_at<T: Float, const BUFFERED: bool>(
             for axis in 0..rank {
                 let coordinate = (coordinates[axis] as i128)
                     .checked_add(offsets[axis])
-                    .ok_or(KernelError::Overflow)?;
+                    .ok_or(Error::Overflow)?;
                 match map_index(coordinate, config.shape[axis], config.modes[axis])? {
                     Some(mapped) => {
                         source = source
                             .checked_add(
                                 mapped
                                     .checked_mul(config.strides[axis])
-                                    .ok_or(KernelError::Overflow)?,
+                                    .ok_or(Error::Overflow)?,
                             )
-                            .ok_or(KernelError::Overflow)?;
+                            .ok_or(Error::Overflow)?;
                     }
                     None => {
                         constant = true;
@@ -529,10 +541,10 @@ fn convolve_range<T: Float>(
     config: &ConvolutionConfig<T>,
     start: usize,
     output: &mut [T],
-) -> Result<(), KernelError> {
+) -> Result<(), Error> {
     let mut scratch = Scratch::new(config)?;
     for (local, destination) in output.iter_mut().enumerate() {
-        let flat = start.checked_add(local).ok_or(KernelError::Overflow)?;
+        let flat = start.checked_add(local).ok_or(Error::Overflow)?;
         *destination = convolve_at::<T, false>(input, config, flat, &mut scratch)?;
     }
     Ok(())
@@ -550,12 +562,12 @@ pub(crate) fn repair_masked<T: Float>(
     data: &mut [T],
     config: &ConvolutionConfig<T>,
     positions: &[usize],
-) -> Result<(), KernelError> {
+) -> Result<(), Error> {
     if data.len() != config.output_len
         || positions.last().is_some_and(|&last| last >= data.len())
         || positions.windows(2).any(|pair| pair[0] >= pair[1])
     {
-        return Err(KernelError::LengthMismatch);
+        return Err(Error::LengthMismatch);
     }
     if positions.is_empty() {
         return Ok(());
@@ -563,7 +575,7 @@ pub(crate) fn repair_masked<T: Float>(
     let mut estimates = Vec::new();
     estimates
         .try_reserve_exact(positions.len())
-        .map_err(|_| KernelError::Memory)?;
+        .map_err(|_| Error::Memory)?;
     estimates.resize(positions.len(), T::nan());
     for &offset in positions {
         data[offset] = T::nan();
@@ -594,9 +606,9 @@ pub(crate) fn convolve_into<T: Float>(
     input: &[T],
     config: &ConvolutionConfig<T>,
     output: &mut [T],
-) -> Result<(), KernelError> {
+) -> Result<(), Error> {
     if input.len() != config.output_len || output.len() != config.output_len {
-        return Err(KernelError::LengthMismatch);
+        return Err(Error::LengthMismatch);
     }
     if output.is_empty() {
         return Ok(());
@@ -607,9 +619,7 @@ pub(crate) fn convolve_into<T: Float>(
         .par_chunks_mut(chunk_len)
         .enumerate()
         .try_for_each(|(chunk_index, chunk)| {
-            let start = chunk_index
-                .checked_mul(chunk_len)
-                .ok_or(KernelError::Overflow)?;
+            let start = chunk_index.checked_mul(chunk_len).ok_or(Error::Overflow)?;
             convolve_range(input, config, start, chunk)
         })
 }

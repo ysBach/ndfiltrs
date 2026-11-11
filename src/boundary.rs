@@ -1,11 +1,28 @@
-use crate::error::KernelError;
+use crate::error::Error;
 
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
-pub(crate) enum BoundaryMode {
+/// How a window reads positions outside the array.
+///
+/// The names and behavior match `scipy.ndimage`. For input `a b c d`:
+#[doc = "\n| Mode | Left extension | Right extension |\n| --- | --- | --- |"]
+#[doc = "| `Reflect` | `b a \\| a b c d` | `a b c d \\| d c` |"]
+#[doc = "| `Constant` | `k k \\| a b c d` | `a b c d \\| k k` |"]
+#[doc = "| `Nearest` | `a a \\| a b c d` | `a b c d \\| d d` |"]
+#[doc = "| `Mirror` | `c b \\| a b c d` | `a b c d \\| c b` |"]
+#[doc = "| `Wrap` | `c d \\| a b c d` | `a b c d \\| a b` |"]
+///
+/// `k` is the plan's constant value (`cval`).
+#[derive(Clone, Copy, Debug, Eq, PartialEq, Hash)]
+#[non_exhaustive]
+pub enum BoundaryMode {
+    /// Reflect about the edge, repeating the edge element.
     Reflect,
+    /// Use the constant value `cval`.
     Constant,
+    /// Repeat the edge element.
     Nearest,
+    /// Reflect about the edge element, without repeating it.
     Mirror,
+    /// Wrap around to the opposite edge.
     Wrap,
 }
 
@@ -13,15 +30,15 @@ pub(crate) fn map_index(
     index: i128,
     length: usize,
     mode: BoundaryMode,
-) -> Result<Option<usize>, KernelError> {
+) -> Result<Option<usize>, Error> {
     if length == 0 {
-        return Err(KernelError::EmptyAxis);
+        return Err(Error::EmptyAxis);
     }
-    let length = i128::try_from(length).map_err(|_| KernelError::Overflow)?;
+    let length = i128::try_from(length).map_err(|_| Error::Overflow)?;
     if (0..length).contains(&index) {
         return usize::try_from(index)
             .map(Some)
-            .map_err(|_| KernelError::Overflow);
+            .map_err(|_| Error::Overflow);
     }
     let mapped = match mode {
         BoundaryMode::Constant => return Ok(None),
@@ -29,7 +46,7 @@ pub(crate) fn map_index(
         BoundaryMode::Wrap => index.rem_euclid(length),
         BoundaryMode::Reflect if length == 1 => 0,
         BoundaryMode::Reflect => {
-            let period = length.checked_mul(2).ok_or(KernelError::Overflow)?;
+            let period = length.checked_mul(2).ok_or(Error::Overflow)?;
             let reduced = index.rem_euclid(period);
             if reduced < length {
                 reduced
@@ -39,7 +56,7 @@ pub(crate) fn map_index(
         }
         BoundaryMode::Mirror if length == 1 => 0,
         BoundaryMode::Mirror => {
-            let period = (length - 1).checked_mul(2).ok_or(KernelError::Overflow)?;
+            let period = (length - 1).checked_mul(2).ok_or(Error::Overflow)?;
             let reduced = index.rem_euclid(period);
             if reduced < length {
                 reduced
@@ -50,7 +67,7 @@ pub(crate) fn map_index(
     };
     usize::try_from(mapped)
         .map(Some)
-        .map_err(|_| KernelError::Overflow)
+        .map_err(|_| Error::Overflow)
 }
 
 #[cfg(test)]

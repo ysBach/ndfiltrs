@@ -11,7 +11,8 @@ use reducers::reducers_1d::median_valid_in_place;
 /// Every rule uses Pearson's relation `mode = pearson * median - (pearson - 1)
 /// * mean`; the caller supplies `pearson` (SExtractor's `BACK_PEARSON`).
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
-pub(crate) enum ModeEstimator {
+#[non_exhaustive]
+pub enum ModeEstimator {
     /// SExtractor mode: `2.5 median - 1.5 mean`, or the median when
     /// `|mean - median| / std >= 0.3`, with population `std` (`ddof=0`);
     /// the mean when `std == 0`. This is `backguess` in SExtractor's

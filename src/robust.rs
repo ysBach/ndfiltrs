@@ -3,7 +3,7 @@ use reducers::Float;
 
 #[cfg(test)]
 use crate::boundary::BoundaryMode;
-use crate::error::KernelError;
+use crate::error::Error;
 use crate::location::{biweight_location, biweight_scale, mode_estimate, ModeEstimator};
 use crate::mean::Sum;
 use crate::window::Window;
@@ -11,76 +11,185 @@ use crate::window::Window;
 // Phi^-1(0.75): the median absolute deviation of a standard normal variable.
 const NORMAL_UPPER_QUARTILE: f64 = 0.674_489_750_196_081_7;
 
-#[derive(Clone, Copy, Debug)]
-pub(crate) enum SamplePolicy {
-    Propagate,
-    Omit { ignore_inf: bool, min_count: usize },
-}
+pub(crate) use crate::reduction::InvalidPolicy as SamplePolicy;
 
-#[derive(Clone, Copy, Debug)]
-pub(crate) enum Center {
+/// Center recomputed from the retained samples before each clipping pass.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[non_exhaustive]
+pub enum ClipCenter {
+    /// Mean of the retained samples.
     Mean,
+    /// Median of the retained samples.
     Median,
 }
 
-#[derive(Clone, Copy, Debug)]
-pub(crate) enum Spread {
+/// Spread used for the clipping bounds.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[non_exhaustive]
+pub enum ClipSpread {
+    /// Population standard deviation (`ddof = 0`).
     Std,
+    /// Median absolute deviation divided by the standard normal 75th
+    /// percentile (about `0.67449`), so it estimates a Gaussian sigma.
     Mad,
 }
 
 /// Statistic reported from the samples that survive clipping.
-#[derive(Clone, Copy, Debug)]
-pub(crate) enum Statistic {
+#[derive(Clone, Copy, Debug, PartialEq)]
+#[non_exhaustive]
+pub enum ClipStatistic {
+    /// Mean of the retained samples.
     Mean,
+    /// Median of the retained samples.
     Median,
+    /// Mode estimate with the given rule and Pearson factor (`>= 1`).
     Mode(ModeEstimator, f64),
 }
 
-#[derive(Clone, Copy, Debug)]
-pub(crate) struct ClipConfig {
+/// Iterative sigma-clipping settings for [`RobustReduction::SigmaClip`].
+///
+/// NaN and infinite samples are always dropped before clipping. Each pass
+/// keeps samples in `center - lower * spread ..= center + upper * spread`.
+/// Rejected samples never return. Clipping stops when a pass rejects nothing
+/// or after `maxiters` passes.
+///
+/// # Examples
+///
+/// ```
+/// use ndfiltrs::{ClipCenter, ClipConfig, ClipStatistic};
+///
+/// // SExtractor-like local background: clip at median +- 3 std until
+/// // stable, then report the SExtractor mode.
+/// let sex = ClipConfig::new(3.0)
+///     .maxiters(None)
+///     .center(ClipCenter::Median)
+///     .statistic(ClipStatistic::Mode(ndfiltrs::ModeEstimator::Sex, 2.5));
+/// # let _ = sex;
+/// ```
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct ClipConfig {
     pub(crate) lower: f64,
     pub(crate) upper: f64,
     pub(crate) maxiters: Option<usize>,
-    pub(crate) center: Center,
-    pub(crate) spread: Spread,
-    pub(crate) statistic: Statistic,
+    pub(crate) center: ClipCenter,
+    pub(crate) spread: ClipSpread,
+    pub(crate) statistic: ClipStatistic,
     pub(crate) min_count: usize,
 }
 
-#[derive(Clone, Copy, Debug)]
-pub(crate) enum RobustReduction {
+impl ClipConfig {
+    /// Clip at `sigma` spreads on both sides.
+    ///
+    /// Defaults match the Python `sigma_clipped_filter`: `maxiters = Some(5)`,
+    /// median center, standard-deviation spread, mean statistic, and
+    /// `min_count = 1`.
+    pub fn new(sigma: f64) -> Self {
+        Self {
+            lower: sigma,
+            upper: sigma,
+            maxiters: Some(5),
+            center: ClipCenter::Median,
+            spread: ClipSpread::Std,
+            statistic: ClipStatistic::Mean,
+            min_count: 1,
+        }
+    }
+
+    /// Set the lower and upper multipliers separately.
+    pub fn bounds(mut self, lower: f64, upper: f64) -> Self {
+        self.lower = lower;
+        self.upper = upper;
+        self
+    }
+
+    /// Set the maximum number of passes. `None` repeats until stable.
+    /// `Some(0)` skips clipping.
+    pub fn maxiters(mut self, maxiters: Option<usize>) -> Self {
+        self.maxiters = maxiters;
+        self
+    }
+
+    /// Set the center used for the bounds.
+    pub fn center(mut self, center: ClipCenter) -> Self {
+        self.center = center;
+        self
+    }
+
+    /// Set the spread used for the bounds.
+    pub fn spread(mut self, spread: ClipSpread) -> Self {
+        self.spread = spread;
+        self
+    }
+
+    /// Set the statistic reported from the retained samples.
+    pub fn statistic(mut self, statistic: ClipStatistic) -> Self {
+        self.statistic = statistic;
+        self
+    }
+
+    /// Set the smallest number of retained samples for a finite result.
+    pub fn min_count(mut self, min_count: usize) -> Self {
+        self.min_count = min_count;
+        self
+    }
+}
+
+/// Robust statistic computed over each window by [`RobustFilter`].
+///
+/// [`RobustFilter`]: crate::RobustFilter
+#[derive(Clone, Copy, Debug, PartialEq)]
+#[non_exhaustive]
+pub enum RobustReduction {
+    /// Linear-interpolated percentile `q` in `0..=100` (NumPy's default
+    /// `linear` method).
     Percentile {
+        /// Percentile in `0..=100`.
         q: f64,
+        /// NaN and infinity handling.
         policy: SamplePolicy,
     },
+    /// Median absolute deviation from the median, multiplied by `scale`.
     Mad {
+        /// Nonnegative factor. `1.0` gives the raw MAD.
         scale: f64,
+        /// NaN and infinity handling.
         policy: SamplePolicy,
     },
+    /// Iterative sigma clipping, then a statistic of the retained samples.
     SigmaClip(ClipConfig),
+    /// Mode estimate from the mean, median, and spread.
     Mode {
+        /// Mode rule.
         estimator: ModeEstimator,
+        /// Pearson factor (`>= 1`), SExtractor's `BACK_PEARSON`.
         pearson: f64,
+        /// NaN and infinity handling.
         policy: SamplePolicy,
     },
+    /// Tukey biweight location, as in `astropy.stats.biweight_location`.
     BiweightLocation {
+        /// Positive tuning constant (Astropy default `6.0`).
         c: f64,
+        /// NaN and infinity handling.
         policy: SamplePolicy,
     },
+    /// Tukey biweight scale, as in `astropy.stats.biweight_scale`.
     BiweightScale {
+        /// Positive tuning constant (Astropy default `9.0`).
         c: f64,
+        /// Count only samples inside the biweight support.
         modify_sample_size: bool,
+        /// NaN and infinity handling.
         policy: SamplePolicy,
     },
 }
 
 impl RobustReduction {
-    fn validate(self, volume: usize) -> Result<(), KernelError> {
+    fn validate(self, volume: usize) -> Result<(), Error> {
         let min_count = match self {
             Self::Percentile { q, policy } => {
                 if !q.is_finite() || !(0.0..=100.0).contains(&q) {
-                    return Err(KernelError::InvalidConfiguration(
+                    return Err(Error::InvalidConfiguration(
                         "percentile must be finite and between zero and 100",
                     ));
                 }
@@ -88,7 +197,7 @@ impl RobustReduction {
             }
             Self::Mad { scale, policy } => {
                 if !scale.is_finite() || scale < 0.0 {
-                    return Err(KernelError::InvalidConfiguration(
+                    return Err(Error::InvalidConfiguration(
                         "MAD scale must be finite and nonnegative",
                     ));
                 }
@@ -102,7 +211,7 @@ impl RobustReduction {
             }
             Self::BiweightLocation { c, policy } | Self::BiweightScale { c, policy, .. } => {
                 if !c.is_finite() || c <= 0.0 {
-                    return Err(KernelError::InvalidConfiguration(
+                    return Err(Error::InvalidConfiguration(
                         "biweight tuning constant must be finite and positive",
                     ));
                 }
@@ -114,18 +223,18 @@ impl RobustReduction {
                     || config.lower < 0.0
                     || config.upper < 0.0
                 {
-                    return Err(KernelError::InvalidConfiguration(
+                    return Err(Error::InvalidConfiguration(
                         "clipping limits must be finite and nonnegative",
                     ));
                 }
-                if let Statistic::Mode(_, pearson) = config.statistic {
+                if let ClipStatistic::Mode(_, pearson) = config.statistic {
                     validate_pearson(pearson)?;
                 }
                 config.min_count
             }
         };
         if min_count == 0 || min_count > volume {
-            return Err(KernelError::InvalidConfiguration(
+            return Err(Error::InvalidConfiguration(
                 "min_count must be between one and the number of window elements",
             ));
         }
@@ -190,11 +299,11 @@ impl RobustReduction {
 }
 
 /// SExtractor accepts `BACK_PEARSON` from 1 upward; 1 makes the mode the median.
-fn validate_pearson(pearson: f64) -> Result<(), KernelError> {
+fn validate_pearson(pearson: f64) -> Result<(), Error> {
     if pearson.is_finite() && pearson >= 1.0 {
         Ok(())
     } else {
-        Err(KernelError::InvalidConfiguration(
+        Err(Error::InvalidConfiguration(
             "pearson must be finite and at least one",
         ))
     }
@@ -458,10 +567,10 @@ fn within_limit(value: f64, center: f64, spread: Scaled, sigma: f64) -> bool {
     distance_exp < limit_exp || (distance_exp == limit_exp && distance <= limit)
 }
 
-fn location(values: &[f64], scratch: &mut Vec<f64>, method: Center) -> f64 {
+fn location(values: &[f64], scratch: &mut Vec<f64>, method: ClipCenter) -> f64 {
     match method {
-        Center::Mean => finite_mean(values),
-        Center::Median => {
+        ClipCenter::Mean => finite_mean(values),
+        ClipCenter::Median => {
             scratch.clear();
             scratch.extend_from_slice(values);
             percentile(scratch, 50.0)
@@ -538,7 +647,7 @@ fn clipped(values: &mut Vec<f64>, scratch: &mut Vec<f64>, config: ClipConfig) ->
     {
         let center = location(values, scratch, config.center);
         let spread = match config.spread {
-            Spread::Mad => {
+            ClipSpread::Mad => {
                 let deviation = mad_parts(values, scratch);
                 if deviation.value > 0.0 && deviation.value.is_finite() {
                     // Keep the Gaussian consistency factor in the mantissa:
@@ -553,7 +662,7 @@ fn clipped(values: &mut Vec<f64>, scratch: &mut Vec<f64>, config: ClipConfig) ->
                     deviation
                 }
             }
-            Spread::Std => std_parts(values),
+            ClipSpread::Std => std_parts(values),
         };
         let previous_count = values.len();
         values.retain(|&value| {
@@ -573,12 +682,13 @@ fn clipped(values: &mut Vec<f64>, scratch: &mut Vec<f64>, config: ClipConfig) ->
         return f64::NAN;
     }
     match config.statistic {
-        Statistic::Mean => location(values, scratch, Center::Mean),
-        Statistic::Median => location(values, scratch, Center::Median),
-        Statistic::Mode(estimator, pearson) => mode_estimate(values, estimator, pearson),
+        ClipStatistic::Mean => location(values, scratch, ClipCenter::Mean),
+        ClipStatistic::Median => location(values, scratch, ClipCenter::Median),
+        ClipStatistic::Mode(estimator, pearson) => mode_estimate(values, estimator, pearson),
     }
 }
 
+#[derive(Clone, Debug)]
 pub(crate) struct RobustConfig<T> {
     window: Window,
     cval: T,
@@ -594,7 +704,7 @@ impl<T: Copy> RobustConfig<T> {
         modes: Vec<BoundaryMode>,
         cval: T,
         reduction: RobustReduction,
-    ) -> Result<Self, KernelError> {
+    ) -> Result<Self, Error> {
         Self::from_window(Window::rectangular(shape, &size, modes)?, cval, reduction)
     }
 
@@ -602,7 +712,7 @@ impl<T: Copy> RobustConfig<T> {
         window: Window,
         cval: T,
         reduction: RobustReduction,
-    ) -> Result<Self, KernelError> {
+    ) -> Result<Self, Error> {
         reduction.validate(window.count())?;
         Ok(Self {
             window,
@@ -617,22 +727,22 @@ fn filter_range<T: Float>(
     config: &RobustConfig<T>,
     start: usize,
     output: &mut [T],
-) -> Result<(), KernelError> {
+) -> Result<(), Error> {
     let mut index = Vec::new();
     index
         .try_reserve_exact(config.window.rank())
-        .map_err(|_| KernelError::Memory)?;
+        .map_err(|_| Error::Memory)?;
     index.resize(config.window.rank(), 0usize);
     let mut values = Vec::new();
     values
         .try_reserve_exact(config.window.count())
-        .map_err(|_| KernelError::Memory)?;
+        .map_err(|_| Error::Memory)?;
     let mut scratch = Vec::new();
     scratch
         .try_reserve_exact(config.window.count())
-        .map_err(|_| KernelError::Memory)?;
+        .map_err(|_| Error::Memory)?;
     for (position, destination) in output.iter_mut().enumerate() {
-        let center = start.checked_add(position).ok_or(KernelError::Overflow)?;
+        let center = start.checked_add(position).ok_or(Error::Overflow)?;
         values.clear();
         config.window.gather(
             input,
@@ -656,9 +766,9 @@ pub(crate) fn robust_into<T: Float>(
     input: &[T],
     config: &RobustConfig<T>,
     output: &mut [T],
-) -> Result<(), KernelError> {
+) -> Result<(), Error> {
     if input.len() != config.window.output_len() || output.len() != config.window.output_len() {
-        return Err(KernelError::LengthMismatch);
+        return Err(Error::LengthMismatch);
     }
     if output.is_empty() {
         return Ok(());
@@ -669,7 +779,7 @@ pub(crate) fn robust_into<T: Float>(
         .par_chunks_mut(chunk_len)
         .enumerate()
         .try_for_each(|(index, chunk)| {
-            let start = index.checked_mul(chunk_len).ok_or(KernelError::Overflow)?;
+            let start = index.checked_mul(chunk_len).ok_or(Error::Overflow)?;
             filter_range(input, config, start, chunk)
         })
 }
@@ -678,8 +788,8 @@ pub(crate) fn robust_into<T: Float>(
 mod tests {
     use super::SamplePolicy;
     use super::{
-        interpolate, robust_into, Center, ClipConfig, RobustConfig, RobustReduction, Spread,
-        Statistic,
+        interpolate, robust_into, ClipCenter, ClipConfig, ClipSpread, ClipStatistic, RobustConfig,
+        RobustReduction,
     };
     use crate::boundary::BoundaryMode;
     use crate::location::ModeEstimator;
@@ -693,9 +803,9 @@ mod tests {
             lower: 1.0,
             upper: 1.0,
             maxiters,
-            center: Center::Median,
-            spread: Spread::Std,
-            statistic: Statistic::Mean,
+            center: ClipCenter::Median,
+            spread: ClipSpread::Std,
+            statistic: ClipStatistic::Mean,
             min_count: 1,
         })
     }
@@ -754,9 +864,9 @@ mod tests {
             lower: 10.0,
             upper: 10.0,
             maxiters: Some(1),
-            center: Center::Median,
-            spread: Spread::Std,
-            statistic: Statistic::Mode(ModeEstimator::Mmm, 3.0),
+            center: ClipCenter::Median,
+            spread: ClipSpread::Std,
+            statistic: ClipStatistic::Mode(ModeEstimator::Mmm, 3.0),
             min_count: 1,
         });
         assert_eq!(evaluate(clipped_mode, &skewed), -0.5);
@@ -844,9 +954,9 @@ mod tests {
             lower: 3.0,
             upper: 3.0,
             maxiters: None,
-            center: Center::Median,
-            spread: Spread::Mad,
-            statistic: Statistic::Median,
+            center: ClipCenter::Median,
+            spread: ClipSpread::Mad,
+            statistic: ClipStatistic::Median,
             min_count: 1,
         };
         assert_eq!(
@@ -869,9 +979,9 @@ mod tests {
             lower: 2.0,
             upper: 2.0,
             maxiters: Some(1),
-            center: Center::Median,
-            spread: Spread::Mad,
-            statistic: Statistic::Mean,
+            center: ClipCenter::Median,
+            spread: ClipSpread::Mad,
+            statistic: ClipStatistic::Mean,
             min_count: 1,
         };
         // Raw MAD is one. Gaussian normalization retains the sample at 4.5.
@@ -970,9 +1080,9 @@ mod tests {
             lower: 3.0,
             upper: 3.0,
             maxiters: None,
-            center: Center::Median,
-            spread: Spread::Std,
-            statistic: Statistic::Mean,
+            center: ClipCenter::Median,
+            spread: ClipSpread::Std,
+            statistic: ClipStatistic::Mean,
             min_count: 3,
         });
         assert_eq!(evaluate(statistic, &[0.0, tiny, tiny]), tiny);
@@ -984,9 +1094,9 @@ mod tests {
             lower: 1.5,
             upper: 1.5,
             maxiters: Some(1),
-            center: Center::Median,
-            spread: Spread::Std,
-            statistic: Statistic::Mean,
+            center: ClipCenter::Median,
+            spread: ClipSpread::Std,
+            statistic: ClipStatistic::Mean,
             min_count: 1,
         };
         assert_eq!(

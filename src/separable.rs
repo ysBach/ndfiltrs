@@ -3,7 +3,7 @@ use reducers::Float;
 
 use crate::boundary::{map_index, BoundaryMode};
 use crate::convolution::{finite_weighted, WeightedSum};
-use crate::error::KernelError;
+use crate::error::Error;
 use crate::mean::Sum;
 
 #[derive(Clone, Copy, Default)]
@@ -63,8 +63,8 @@ pub(crate) fn smooth_into<T: Float + Send + Sync>(
     ignore_inf: bool,
     min_count: usize,
     output: &mut [T],
-) -> Result<(), KernelError> {
-    let invalid = || KernelError::InvalidConfiguration("invalid separable smoothing parameters");
+) -> Result<(), Error> {
+    let invalid = || Error::InvalidConfiguration("invalid separable smoothing parameters");
     if shape.is_empty()
         || axes.is_empty()
         || axes.len() != kernels.len()
@@ -79,12 +79,10 @@ pub(crate) fn smooth_into<T: Float + Send + Sync>(
     let mut length = 1usize;
     for axis in (0..shape.len()).rev() {
         strides[axis] = length;
-        length = length
-            .checked_mul(shape[axis])
-            .ok_or(KernelError::Overflow)?;
+        length = length.checked_mul(shape[axis]).ok_or(Error::Overflow)?;
     }
     if input.len() != length || output.len() != length {
-        return Err(KernelError::LengthMismatch);
+        return Err(Error::LengthMismatch);
     }
     let mut support = 1usize;
     let mut smallest_product = 1.0;
@@ -103,7 +101,7 @@ pub(crate) fn smooth_into<T: Float + Send + Sync>(
         if count == 0 {
             return Err(invalid());
         }
-        support = support.checked_mul(count).ok_or(KernelError::Overflow)?;
+        support = support.checked_mul(count).ok_or(Error::Overflow)?;
         smallest_product *= kernel
             .iter()
             .copied()
@@ -111,12 +109,12 @@ pub(crate) fn smooth_into<T: Float + Send + Sync>(
             .fold(1.0, f64::min);
     }
     if smallest_product < f64::MIN_POSITIVE {
-        return Err(KernelError::InvalidConfiguration(
+        return Err(Error::InvalidConfiguration(
             "separable product weights underflow; use method='direct'",
         ));
     }
     if min_count == 0 || min_count > support {
-        return Err(KernelError::InvalidConfiguration(
+        return Err(Error::InvalidConfiguration(
             "min_count exceeds positive kernel support",
         ));
     }
@@ -126,15 +124,14 @@ pub(crate) fn smooth_into<T: Float + Send + Sync>(
     let mut previous = Vec::new();
     previous
         .try_reserve_exact(length)
-        .map_err(|_| KernelError::Memory)?;
+        .map_err(|_| Error::Memory)?;
     previous.extend(
         input
             .iter()
             .map(|&value| Sample::new(value.to_f64(), omit_nan, ignore_inf)),
     );
     let mut next = Vec::new();
-    next.try_reserve_exact(length)
-        .map_err(|_| KernelError::Memory)?;
+    next.try_reserve_exact(length).map_err(|_| Error::Memory)?;
     next.resize(length, Sample::default());
     let mut padding = Sample::new(cval.to_f64(), omit_nan, ignore_inf);
     for (&axis, kernel) in axes.iter().zip(kernels) {
@@ -155,7 +152,7 @@ pub(crate) fn smooth_into<T: Float + Send + Sync>(
                 // starting index and every tap offset fit within the array.
                 let interior_start = (coordinate >= radius && radius < axis_length - coordinate)
                     .then(|| flat + radius * stride);
-                let sample_at = |tap: usize| -> Result<Sample, KernelError> {
+                let sample_at = |tap: usize| -> Result<Sample, Error> {
                     if let Some(start) = interior_start {
                         return Ok(previous[start - tap * stride]);
                     }
@@ -182,7 +179,7 @@ pub(crate) fn smooth_into<T: Float + Send + Sync>(
                     result.count = result
                         .count
                         .checked_add(sample.count)
-                        .ok_or(KernelError::Overflow)?;
+                        .ok_or(Error::Overflow)?;
                     result.nan |= sample.nan;
                     result.positive_inf |= sample.positive_inf;
                     result.negative_inf |= sample.negative_inf;
@@ -199,9 +196,7 @@ pub(crate) fn smooth_into<T: Float + Send + Sync>(
                     // Replay only exceptional neighborhoods. The retained
                     // pairs and their order are identical to the original path.
                     pairs.clear();
-                    pairs
-                        .try_reserve(kernel.len())
-                        .map_err(|_| KernelError::Memory)?;
+                    pairs.try_reserve(kernel.len()).map_err(|_| Error::Memory)?;
                     for (tap, &weight) in kernel.iter().enumerate() {
                         if weight == 0.0 {
                             continue;
@@ -215,14 +210,14 @@ pub(crate) fn smooth_into<T: Float + Send + Sync>(
                     finite_weighted(pairs, true)
                 };
                 *destination = result;
-                Ok::<(), KernelError>(())
+                Ok::<(), Error>(())
             },
         )?;
         std::mem::swap(&mut previous, &mut next);
         padding.count = padding
             .count
             .checked_mul(kernel.iter().filter(|&&w| w > 0.0).count())
-            .ok_or(KernelError::Overflow)?;
+            .ok_or(Error::Overflow)?;
     }
     output
         .par_iter_mut()

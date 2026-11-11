@@ -3,7 +3,7 @@
 use reducers::Float;
 
 use crate::boundary::{map_index, BoundaryMode};
-use crate::error::KernelError;
+use crate::error::Error;
 use crate::filter_nd::{filter_nd_serial, FilterConfig};
 use crate::reduction::{InvalidPolicy, Reduction};
 
@@ -16,7 +16,7 @@ pub enum BenchmarkPolicy {
     Omit { ignore_inf: bool, min_count: usize },
 }
 
-fn modes(names: [&str; 2]) -> Result<Vec<BoundaryMode>, KernelError> {
+fn modes(names: [&str; 2]) -> Result<Vec<BoundaryMode>, Error> {
     names
         .into_iter()
         .map(|name| match name {
@@ -25,7 +25,7 @@ fn modes(names: [&str; 2]) -> Result<Vec<BoundaryMode>, KernelError> {
             "nearest" => Ok(BoundaryMode::Nearest),
             "mirror" => Ok(BoundaryMode::Mirror),
             "wrap" => Ok(BoundaryMode::Wrap),
-            _ => Err(KernelError::InvalidConfiguration("unsupported mode")),
+            _ => Err(Error::InvalidConfiguration("unsupported mode")),
         })
         .collect()
 }
@@ -72,20 +72,18 @@ pub fn specialized_2d<T: Float>(
     value_policy: BenchmarkPolicy,
 ) -> Result<Vec<T>, Box<dyn std::error::Error>> {
     if size.iter().any(|&length| length == 0 || length % 2 == 0) {
-        return Err(Box::new(KernelError::InvalidConfiguration(
+        return Err(Box::new(Error::InvalidConfiguration(
             "window sizes must be positive odd integers",
         )));
     }
-    let output_len = shape[0]
-        .checked_mul(shape[1])
-        .ok_or(KernelError::Overflow)?;
+    let output_len = shape[0].checked_mul(shape[1]).ok_or(Error::Overflow)?;
     if input.len() != output_len {
-        return Err(Box::new(KernelError::LengthMismatch));
+        return Err(Box::new(Error::LengthMismatch));
     }
-    let window_volume = size[0].checked_mul(size[1]).ok_or(KernelError::Overflow)?;
+    let window_volume = size[0].checked_mul(size[1]).ok_or(Error::Overflow)?;
     if let BenchmarkPolicy::Omit { min_count, .. } = value_policy {
         if min_count == 0 || min_count > window_volume {
-            return Err(Box::new(KernelError::InvalidConfiguration(
+            return Err(Box::new(Error::InvalidConfiguration(
                 "min_count must be between 1 and the window volume",
             )));
         }
@@ -94,11 +92,11 @@ pub fn specialized_2d<T: Float>(
     let mut output = Vec::new();
     output
         .try_reserve_exact(output_len)
-        .map_err(|_| KernelError::Memory)?;
+        .map_err(|_| Error::Memory)?;
     let mut scratch = Vec::new();
     scratch
         .try_reserve_exact(window_volume)
-        .map_err(|_| KernelError::Memory)?;
+        .map_err(|_| Error::Memory)?;
     for row in 0..shape[0] {
         for column in 0..shape[1] {
             scratch.clear();
@@ -116,7 +114,7 @@ pub fn specialized_2d<T: Float>(
                             let flat = source_row
                                 .checked_mul(shape[1])
                                 .and_then(|base| base.checked_add(source_column))
-                                .ok_or(KernelError::Overflow)?;
+                                .ok_or(Error::Overflow)?;
                             input[flat]
                         }
                         _ => cval,

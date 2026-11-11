@@ -1,19 +1,19 @@
 use crate::median_network::NetworkFloat;
 use rayon::prelude::*;
 
-use crate::error::KernelError;
+use crate::error::Error;
 use crate::filter_nd::{filter_range, FilterConfig};
 
 #[cfg(test)]
 pub(crate) fn filter_nd<T: NetworkFloat>(
     input: &[T],
     config: &FilterConfig<T>,
-) -> Result<Vec<T>, KernelError> {
+) -> Result<Vec<T>, Error> {
     let output_len = config.output_len();
     let mut output = Vec::new();
     output
         .try_reserve_exact(output_len)
-        .map_err(|_| KernelError::Memory)?;
+        .map_err(|_| Error::Memory)?;
     output.resize(output_len, T::nan());
     filter_nd_into(input, config, &mut output)?;
     Ok(output)
@@ -23,10 +23,10 @@ pub(crate) fn filter_nd_into<T: NetworkFloat>(
     input: &[T],
     config: &FilterConfig<T>,
     output: &mut [T],
-) -> Result<(), KernelError> {
+) -> Result<(), Error> {
     let output_len = config.output_len();
     if output.len() != output_len || input.len() != output_len {
-        return Err(KernelError::LengthMismatch);
+        return Err(Error::LengthMismatch);
     }
     if output_len == 0 {
         return Ok(());
@@ -40,9 +40,7 @@ pub(crate) fn filter_nd_into<T: NetworkFloat>(
         .par_chunks_mut(chunk_len)
         .enumerate()
         .try_for_each(|(chunk_index, chunk)| {
-            let start = chunk_index
-                .checked_mul(chunk_len)
-                .ok_or(KernelError::Overflow)?;
+            let start = chunk_index.checked_mul(chunk_len).ok_or(Error::Overflow)?;
             filter_range(input, config, start, chunk)
         })
 }

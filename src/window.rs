@@ -6,7 +6,7 @@
 //! (tap `k` samples `center + k - (size / 2 + origin)`).
 
 use crate::boundary::{map_index, BoundaryMode};
-use crate::error::KernelError;
+use crate::error::Error;
 
 #[derive(Clone, Debug)]
 pub(crate) struct Window {
@@ -24,17 +24,17 @@ pub(crate) struct Window {
     output_len: usize,
 }
 
-fn checked_product(values: &[usize]) -> Result<usize, KernelError> {
+fn checked_product(values: &[usize]) -> Result<usize, Error> {
     values.iter().try_fold(1usize, |product, &value| {
-        product.checked_mul(value).ok_or(KernelError::Overflow)
+        product.checked_mul(value).ok_or(Error::Overflow)
     })
 }
 
-fn reserve<T>(length: usize) -> Result<Vec<T>, KernelError> {
+fn reserve<T>(length: usize) -> Result<Vec<T>, Error> {
     let mut values = Vec::new();
     values
         .try_reserve_exact(length)
-        .map_err(|_| KernelError::Memory)?;
+        .map_err(|_| Error::Memory)?;
     Ok(values)
 }
 
@@ -47,32 +47,30 @@ impl Window {
         footprint: Option<&[bool]>,
         origin: &[isize],
         modes: Vec<BoundaryMode>,
-    ) -> Result<Self, KernelError> {
+    ) -> Result<Self, Error> {
         let rank = shape.len();
         if rank == 0 {
-            return Err(KernelError::InvalidConfiguration(
+            return Err(Error::InvalidConfiguration(
                 "filtering requires at least one dimension",
             ));
         }
         if window_shape.len() != rank || origin.len() != rank || modes.len() != rank {
-            return Err(KernelError::InvalidConfiguration(
+            return Err(Error::InvalidConfiguration(
                 "array, window, origin, and mode must have equal rank",
             ));
         }
         if window_shape.contains(&0) {
-            return Err(KernelError::InvalidConfiguration(
-                "window sizes must be positive",
-            ));
+            return Err(Error::InvalidConfiguration("window sizes must be positive"));
         }
         let volume = checked_product(window_shape)?;
         if footprint.is_some_and(|values| values.len() != volume) {
-            return Err(KernelError::LengthMismatch);
+            return Err(Error::LengthMismatch);
         }
         let mut anchors = reserve::<isize>(rank)?;
         for (&length, &shift) in window_shape.iter().zip(origin) {
-            let length = isize::try_from(length).map_err(|_| KernelError::Overflow)?;
+            let length = isize::try_from(length).map_err(|_| Error::Overflow)?;
             if shift < -(length / 2) || shift > (length - 1) / 2 {
-                return Err(KernelError::InvalidConfiguration(
+                return Err(Error::InvalidConfiguration(
                     "origin must satisfy -(size // 2) <= origin <= (size - 1) // 2",
                 ));
             }
@@ -84,15 +82,15 @@ impl Window {
         for axis in (0..rank - 1).rev() {
             strides[axis] = strides[axis + 1]
                 .checked_mul(shape[axis + 1])
-                .ok_or(KernelError::Overflow)?;
+                .ok_or(Error::Overflow)?;
         }
         let count = footprint.map_or(volume, |values| values.iter().filter(|&&on| on).count());
         if count == 0 {
-            return Err(KernelError::InvalidConfiguration(
+            return Err(Error::InvalidConfiguration(
                 "footprint must select at least one element",
             ));
         }
-        let mut taps = reserve::<isize>(count.checked_mul(rank).ok_or(KernelError::Overflow)?)?;
+        let mut taps = reserve::<isize>(count.checked_mul(rank).ok_or(Error::Overflow)?)?;
         let mut flat_taps = reserve::<isize>(count)?;
         let mut low = reserve::<isize>(rank)?;
         low.resize(rank, isize::MAX);
@@ -104,14 +102,13 @@ impl Window {
             if footprint.is_none_or(|values| values[element]) {
                 let mut flat = 0isize;
                 for axis in 0..rank {
-                    let offset = isize::try_from(index[axis]).map_err(|_| KernelError::Overflow)?
-                        - anchors[axis];
-                    let stride =
-                        isize::try_from(strides[axis]).map_err(|_| KernelError::Overflow)?;
+                    let offset =
+                        isize::try_from(index[axis]).map_err(|_| Error::Overflow)? - anchors[axis];
+                    let stride = isize::try_from(strides[axis]).map_err(|_| Error::Overflow)?;
                     flat = offset
                         .checked_mul(stride)
                         .and_then(|step| flat.checked_add(step))
-                        .ok_or(KernelError::Overflow)?;
+                        .ok_or(Error::Overflow)?;
                     low[axis] = low[axis].min(offset);
                     high[axis] = high[axis].max(offset);
                     taps.push(offset);
@@ -145,7 +142,7 @@ impl Window {
         shape: Vec<usize>,
         size: &[usize],
         modes: Vec<BoundaryMode>,
-    ) -> Result<Self, KernelError> {
+    ) -> Result<Self, Error> {
         let origin = vec![0isize; size.len()];
         Self::new(shape, size, None, &origin, modes)
     }
@@ -170,7 +167,7 @@ impl Window {
         center: usize,
         limit: usize,
         index: &mut [usize],
-    ) -> Result<(bool, usize), KernelError> {
+    ) -> Result<(bool, usize), Error> {
         let interior = self.prepare(input_len, center, index)?;
         let last = self.rank() - 1;
         let row_left = self.shape[last] - index[last];
@@ -219,7 +216,7 @@ impl Window {
         index: &mut [usize],
         values: &mut Vec<U>,
         convert: impl Fn(T) -> U,
-    ) -> Result<(), KernelError> {
+    ) -> Result<(), Error> {
         if self.prepare(input.len(), center, index)? {
             let base = center as isize;
             values.extend(
@@ -241,7 +238,7 @@ impl Window {
         cval: T,
         index: &mut [usize],
         mut consume: impl FnMut(T),
-    ) -> Result<(), KernelError> {
+    ) -> Result<(), Error> {
         if self.prepare(input.len(), center, index)? {
             let base = center as isize;
             for &offset in &self.flat_taps {
@@ -254,14 +251,9 @@ impl Window {
     }
 
     /// Decode the center and test whether all taps avoid boundary mapping.
-    fn prepare(
-        &self,
-        input_len: usize,
-        center: usize,
-        index: &mut [usize],
-    ) -> Result<bool, KernelError> {
+    fn prepare(&self, input_len: usize, center: usize, index: &mut [usize]) -> Result<bool, Error> {
         if center >= self.output_len || input_len != self.output_len || index.len() != self.rank() {
-            return Err(KernelError::LengthMismatch);
+            return Err(Error::LengthMismatch);
         }
         let mut remainder = center;
         let mut interior = true;
@@ -282,7 +274,7 @@ impl Window {
         cval: T,
         index: &[usize],
         mut consume: impl FnMut(T),
-    ) -> Result<(), KernelError> {
+    ) -> Result<(), Error> {
         for tap in self.taps.chunks_exact(self.rank()) {
             let mut source = 0usize;
             let mut outside = false;

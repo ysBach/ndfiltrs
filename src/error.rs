@@ -1,15 +1,23 @@
 use std::fmt;
 
+/// Errors returned by filter plans and kernels.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
-pub(crate) enum KernelError {
+#[non_exhaustive]
+pub enum Error {
+    /// A boundary mode had to map an index on an axis of length zero.
     EmptyAxis,
+    /// The geometry, reduction, or policy is invalid. The text names the
+    /// rule.
     InvalidConfiguration(&'static str),
+    /// A buffer length differs from the configured shape.
     LengthMismatch,
+    /// A workspace allocation failed.
     Memory,
+    /// Shape or index arithmetic overflowed.
     Overflow,
 }
 
-impl fmt::Display for KernelError {
+impl fmt::Display for Error {
     fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Self::EmptyAxis => formatter.write_str("cannot map an empty axis"),
@@ -23,4 +31,4 @@ impl fmt::Display for KernelError {
     }
 }
 
-impl std::error::Error for KernelError {}
+impl std::error::Error for Error {}

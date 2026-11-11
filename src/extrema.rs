@@ -5,7 +5,7 @@ use rayon::prelude::*;
 use reducers::Float;
 
 use crate::boundary::{map_index, BoundaryMode};
-use crate::error::KernelError;
+use crate::error::Error;
 use crate::reduction::InvalidPolicy;
 
 #[derive(Clone, Copy)]
@@ -84,40 +84,37 @@ impl<T> Default for LineWorkspace<T> {
     }
 }
 
-fn checked_product(values: &[usize]) -> Result<usize, KernelError> {
+fn checked_product(values: &[usize]) -> Result<usize, Error> {
     values.iter().try_fold(1usize, |product, &value| {
-        product.checked_mul(value).ok_or(KernelError::Overflow)
+        product.checked_mul(value).ok_or(Error::Overflow)
     })
 }
 
-fn reserve<T>(length: usize) -> Result<Vec<T>, KernelError> {
+fn reserve<T>(length: usize) -> Result<Vec<T>, Error> {
     let mut values = Vec::new();
     values
         .try_reserve_exact(length)
-        .map_err(|_| KernelError::Memory)?;
+        .map_err(|_| Error::Memory)?;
     Ok(values)
 }
 
-fn resize_summaries<T: Float>(
-    values: &mut Vec<Summary<T>>,
-    length: usize,
-) -> Result<(), KernelError> {
+fn resize_summaries<T: Float>(values: &mut Vec<Summary<T>>, length: usize) -> Result<(), Error> {
     values.clear();
     if values.capacity() < length {
         values
             .try_reserve_exact(length)
-            .map_err(|_| KernelError::Memory)?;
+            .map_err(|_| Error::Memory)?;
     }
     values.resize(length, Summary::empty());
     Ok(())
 }
 
-fn resize_counts(values: &mut Vec<usize>, length: usize) -> Result<(), KernelError> {
+fn resize_counts(values: &mut Vec<usize>, length: usize) -> Result<(), Error> {
     values.clear();
     if values.capacity() < length {
         values
             .try_reserve_exact(length)
-            .map_err(|_| KernelError::Memory)?;
+            .map_err(|_| Error::Memory)?;
     }
     values.resize(length, 0);
     Ok(())
@@ -135,29 +132,27 @@ pub(crate) fn extrema_into<T: Float + Send + Sync>(
     maximum: bool,
     policy: InvalidPolicy,
     output: &mut [T],
-) -> Result<(), KernelError> {
+) -> Result<(), Error> {
     let rank = shape.len();
     if rank == 0 {
-        return Err(KernelError::InvalidConfiguration(
+        return Err(Error::InvalidConfiguration(
             "filtering requires at least one dimension",
         ));
     }
     if size.len() != rank || origin.len() != rank || modes.len() != rank {
-        return Err(KernelError::InvalidConfiguration(
+        return Err(Error::InvalidConfiguration(
             "array, window, origin, and mode must have equal rank",
         ));
     }
     if size.contains(&0) {
-        return Err(KernelError::InvalidConfiguration(
-            "window sizes must be positive",
-        ));
+        return Err(Error::InvalidConfiguration("window sizes must be positive"));
     }
     let volume = checked_product(size)?;
     let mut anchors = reserve::<isize>(rank)?;
     for (&window_length, &shift) in size.iter().zip(origin) {
-        let window_length = isize::try_from(window_length).map_err(|_| KernelError::Overflow)?;
+        let window_length = isize::try_from(window_length).map_err(|_| Error::Overflow)?;
         if shift < -(window_length / 2) || shift > (window_length - 1) / 2 {
-            return Err(KernelError::InvalidConfiguration(
+            return Err(Error::InvalidConfiguration(
                 "origin must satisfy -(size // 2) <= origin <= (size - 1) // 2",
             ));
         }
@@ -165,7 +160,7 @@ pub(crate) fn extrema_into<T: Float + Send + Sync>(
     }
     if let InvalidPolicy::Omit { min_count, .. } = policy {
         if min_count == 0 || min_count > volume {
-            return Err(KernelError::InvalidConfiguration(
+            return Err(Error::InvalidConfiguration(
                 "min_count must be between 1 and the number of window elements",
             ));
         }
@@ -177,10 +172,10 @@ pub(crate) fn extrema_into<T: Float + Send + Sync>(
     for axis in (0..rank - 1).rev() {
         strides[axis] = strides[axis + 1]
             .checked_mul(shape[axis + 1])
-            .ok_or(KernelError::Overflow)?;
+            .ok_or(Error::Overflow)?;
     }
     if input.len() != output_len || output.len() != output_len {
-        return Err(KernelError::LengthMismatch);
+        return Err(Error::LengthMismatch);
     }
     if output_len == 0 {
         return Ok(());
@@ -234,11 +229,9 @@ pub(crate) fn extrema_into<T: Float + Send + Sync>(
         let padded_length = axis_length
             .checked_add(window_length)
             .and_then(|length| length.checked_sub(1))
-            .ok_or(KernelError::Overflow)?;
+            .ok_or(Error::Overflow)?;
         let line_count = output_len / axis_length;
-        let axis_block = axis_length
-            .checked_mul(stride)
-            .ok_or(KernelError::Overflow)?;
+        let axis_block = axis_length.checked_mul(stride).ok_or(Error::Overflow)?;
 
         if let (Some(previous_counts), Some(line_count_results)) =
             (previous_counts.as_ref(), line_count_results.as_mut())
@@ -251,7 +244,7 @@ pub(crate) fn extrema_into<T: Float + Send + Sync>(
                     LineWorkspace::default,
                     |workspace,
                      (line_index, (destinations, count_destinations))|
-                     -> Result<(), KernelError> {
+                     -> Result<(), Error> {
                         resize_summaries(&mut workspace.padded, padded_length)?;
                         resize_summaries(&mut workspace.prefix, padded_length)?;
                         resize_summaries(&mut workspace.suffix, padded_length)?;
@@ -264,9 +257,9 @@ pub(crate) fn extrema_into<T: Float + Send + Sync>(
                         let base = outer_index * axis_block + inner_index;
                         for (position, sample) in workspace.padded.iter_mut().enumerate() {
                             let coordinate = i128::try_from(position)
-                                .map_err(|_| KernelError::Overflow)?
+                                .map_err(|_| Error::Overflow)?
                                 .checked_sub(anchors[axis] as i128)
-                                .ok_or(KernelError::Overflow)?;
+                                .ok_or(Error::Overflow)?;
                             let mapped = map_index(coordinate, axis_length, modes[axis])?;
                             *sample = match mapped {
                                 Some(mapped) => previous[base + mapped * stride],
@@ -276,7 +269,7 @@ pub(crate) fn extrema_into<T: Float + Send + Sync>(
                                 Some(mapped) => previous_counts[base + mapped * stride],
                                 None => prior_volume
                                     .checked_mul(usize::from(retained(cval, policy)))
-                                    .ok_or(KernelError::Overflow)?,
+                                    .ok_or(Error::Overflow)?,
                             };
                         }
 
@@ -292,7 +285,7 @@ pub(crate) fn extrema_into<T: Float + Send + Sync>(
                             } else {
                                 workspace.prefix_counts[position - 1]
                                     .checked_add(workspace.padded_counts[position])
-                                    .ok_or(KernelError::Overflow)?
+                                    .ok_or(Error::Overflow)?
                             };
                         }
                         for position in (0..padded_length).rev() {
@@ -311,7 +304,7 @@ pub(crate) fn extrema_into<T: Float + Send + Sync>(
                             } else {
                                 workspace.suffix_counts[position + 1]
                                     .checked_add(workspace.padded_counts[position])
-                                    .ok_or(KernelError::Overflow)?
+                                    .ok_or(Error::Overflow)?
                             };
                         }
                         for (position, destination) in destinations.iter_mut().enumerate() {
@@ -325,11 +318,11 @@ pub(crate) fn extrema_into<T: Float + Send + Sync>(
                                         .and_then(|count| {
                                             count.checked_add(workspace.padded_counts[position])
                                         })
-                                        .ok_or(KernelError::Overflow)?
+                                        .ok_or(Error::Overflow)?
                                 } else {
                                     workspace.suffix_counts[position]
                                         .checked_add(workspace.prefix_counts[end])
-                                        .ok_or(KernelError::Overflow)?
+                                        .ok_or(Error::Overflow)?
                                 };
                         }
                         Ok(())
@@ -341,7 +334,7 @@ pub(crate) fn extrema_into<T: Float + Send + Sync>(
                 .enumerate()
                 .try_for_each_init(
                     LineWorkspace::default,
-                    |workspace, (line_index, destinations)| -> Result<(), KernelError> {
+                    |workspace, (line_index, destinations)| -> Result<(), Error> {
                         resize_summaries(&mut workspace.padded, padded_length)?;
                         resize_summaries(&mut workspace.prefix, padded_length)?;
                         resize_summaries(&mut workspace.suffix, padded_length)?;
@@ -351,9 +344,9 @@ pub(crate) fn extrema_into<T: Float + Send + Sync>(
                         let base = outer_index * axis_block + inner_index;
                         for (position, sample) in workspace.padded.iter_mut().enumerate() {
                             let coordinate = i128::try_from(position)
-                                .map_err(|_| KernelError::Overflow)?
+                                .map_err(|_| Error::Overflow)?
                                 .checked_sub(anchors[axis] as i128)
-                                .ok_or(KernelError::Overflow)?;
+                                .ok_or(Error::Overflow)?;
                             *sample = match map_index(coordinate, axis_length, modes[axis])? {
                                 Some(mapped) => previous[base + mapped * stride],
                                 None => Summary::sample(cval, policy),
@@ -415,7 +408,7 @@ pub(crate) fn extrema_into<T: Float + Send + Sync>(
         std::mem::swap(&mut previous_counts, &mut next_counts);
         prior_volume = prior_volume
             .checked_mul(window_length)
-            .ok_or(KernelError::Overflow)?;
+            .ok_or(Error::Overflow)?;
     }
 
     match policy {
@@ -426,7 +419,7 @@ pub(crate) fn extrema_into<T: Float + Send + Sync>(
                 *destination = if summary.nan { T::nan() } else { summary.value };
             }),
         InvalidPolicy::Omit { min_count, .. } => {
-            let counts = previous_counts.ok_or(KernelError::Overflow)?;
+            let counts = previous_counts.ok_or(Error::Overflow)?;
             output
                 .par_iter_mut()
                 .zip(previous.into_par_iter())
@@ -827,7 +820,7 @@ mod tests {
         );
         assert!(matches!(
             error,
-            Err(crate::error::KernelError::InvalidConfiguration(_))
+            Err(crate::error::Error::InvalidConfiguration(_))
         ));
         assert!(extrema_into(
             &[1.0, 2.0],

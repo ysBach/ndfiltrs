@@ -14,11 +14,9 @@ use pyo3::exceptions::{PyMemoryError, PyOverflowError, PyRuntimeError, PyValueEr
 use pyo3::prelude::*;
 
 use crate::boundary::BoundaryMode;
-use crate::error::KernelError;
-use crate::exact_sum::ExactFloat;
-use crate::extrema;
-use crate::filter_nd::FilterConfig;
+use crate::error::Error;
 use crate::parallel;
+use crate::plan::{FilterFloat, Neighborhood, WindowFilter};
 use crate::reduction::{InvalidPolicy, Reduction};
 use crate::window::Window;
 
@@ -36,13 +34,13 @@ pub(super) fn parse_modes(modes: &[String]) -> PyResult<Vec<BoundaryMode>> {
         .collect()
 }
 
-pub(super) fn python_error(error: KernelError) -> PyErr {
+pub(super) fn python_error(error: Error) -> PyErr {
     match error {
-        KernelError::Memory => PyMemoryError::new_err(error.to_string()),
-        KernelError::Overflow => PyOverflowError::new_err(error.to_string()),
-        KernelError::EmptyAxis
-        | KernelError::InvalidConfiguration(_)
-        | KernelError::LengthMismatch => PyValueError::new_err(error.to_string()),
+        Error::Memory => PyMemoryError::new_err(error.to_string()),
+        Error::Overflow => PyOverflowError::new_err(error.to_string()),
+        Error::EmptyAxis | Error::InvalidConfiguration(_) | Error::LengthMismatch => {
+            PyValueError::new_err(error.to_string())
+        }
     }
 }
 
@@ -174,6 +172,14 @@ impl WindowSpec {
         }
     }
 
+    fn neighborhood(self, modes: &[String]) -> PyResult<Neighborhood> {
+        let neighborhood = match self.footprint {
+            Some(mask) => Neighborhood::footprint(self.size, mask),
+            None => Neighborhood::rectangular(self.size),
+        };
+        Ok(neighborhood.origin(self.origin).modes(parse_modes(modes)?))
+    }
+
     pub(super) fn build(self, shape: Vec<usize>, modes: &[String]) -> PyResult<Window> {
         Window::new(
             shape,
@@ -196,7 +202,7 @@ fn run_filter<T, A, D>(
     hooks: FilterHooks<A, D>,
 ) -> PyResult<Py<PyArrayDyn<T>>>
 where
-    T: ExactFloat + crate::median_network::NetworkFloat + Element + Send + Sync,
+    T: FilterFloat + Element,
     A: FnOnce() -> PyResult<()>,
     D: FnOnce() -> Result<(), &'static str> + Send,
 {
@@ -208,42 +214,8 @@ where
     if !array.is_c_contiguous() {
         return Err(PyValueError::new_err("native input must be C-contiguous"));
     }
-    // Rectangular min/max use the exact separable sliding-extremum algorithm;
-    // its results equal the direct window traversal bit for bit.
-    let extrema = match reduction {
-        Reduction::Minimum(policy) | Reduction::Maximum(policy) if window.footprint.is_none() => {
-            Some((
-                window.size.clone(),
-                window.origin.clone(),
-                parse_modes(&modes)?,
-                matches!(reduction, Reduction::Maximum(_)),
-                policy,
-            ))
-        }
-        _ => None,
-    };
-    let rolling = if let Reduction::RollingMean(policy) = reduction {
-        if window.footprint.is_some() {
-            return Err(PyValueError::new_err(
-                "rolling means require rectangular size, not footprint",
-            ));
-        }
-        Some((
-            window.size.clone(),
-            window.origin.clone(),
-            parse_modes(&modes)?,
-            policy,
-        ))
-    } else {
-        None
-    };
-    let config = match (&extrema, &rolling) {
-        (None, None) => Some(
-            FilterConfig::from_window(window.build(shape.clone(), &modes)?, cval, reduction)
-                .map_err(python_error)?,
-        ),
-        _ => None,
-    };
+    let neighborhood = window.neighborhood(&modes)?;
+    let plan = WindowFilter::new(&shape, &neighborhood, reduction, cval).map_err(python_error)?;
     let mut input = Vec::new();
     {
         let borrowed_input = array
@@ -265,36 +237,7 @@ where
             .as_slice_mut()
             .map_err(|_| PyRuntimeError::new_err("native output is not C-contiguous"))?;
         let (probe_error, filter_result) = py.detach(|| match during_detach() {
-            Ok(()) => (
-                None,
-                match (&extrema, &rolling, &config) {
-                    (Some((size, origin, boundary, maximum, policy)), _, _) => {
-                        extrema::extrema_into(
-                            &input,
-                            &shape,
-                            size,
-                            origin,
-                            boundary,
-                            cval,
-                            *maximum,
-                            *policy,
-                            output_slice,
-                        )
-                    }
-                    (_, Some((size, origin, boundary, policy)), _) => crate::boxcar::mean_into(
-                        &input,
-                        &shape,
-                        size,
-                        origin,
-                        boundary,
-                        cval,
-                        *policy,
-                        output_slice,
-                    ),
-                    (_, _, Some(config)) => parallel::filter_nd_into(&input, config, output_slice),
-                    _ => unreachable!("direct filters always have a configuration"),
-                },
-            ),
+            Ok(()) => (None, plan.apply_into(&input, output_slice)),
             Err(message) => (Some(message), Ok(())),
         });
         if let Some(message) = probe_error {

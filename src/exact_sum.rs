@@ -18,7 +18,7 @@ mod sealed {
 }
 
 /// An IEEE binary format supported by the directly rounded mean.
-pub(crate) trait ExactFloat: sealed::Sealed + reducers::Float {
+pub trait ExactFloat: sealed::Sealed + reducers::Float {
     const PRECISION: u32;
     /// Exponent of the smallest positive subnormal.
     const MIN_EXP: i32;

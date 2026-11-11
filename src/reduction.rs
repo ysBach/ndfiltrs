@@ -1,29 +1,51 @@
 use reducers::Float;
 
+/// Treatment of NaN (and optionally infinite) samples inside a window.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
-pub(crate) enum InvalidPolicy {
+#[non_exhaustive]
+pub enum InvalidPolicy {
+    /// A window with any NaN produces NaN. Infinities take part normally.
     Propagate,
-    Omit { ignore_inf: bool, min_count: usize },
+    /// Drop NaN samples, and infinite samples too when `ignore_inf` is
+    /// `true`. A window with fewer than `min_count` retained samples produces
+    /// NaN. `min_count` must be between 1 and the window size.
+    Omit {
+        /// Also drop `+inf` and `-inf`.
+        ignore_inf: bool,
+        /// Smallest number of retained samples for a finite result.
+        min_count: usize,
+    },
 }
 
+/// The statistic computed over each window.
+///
+/// Every variant carries the [`InvalidPolicy`] for NaN samples.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
-// The benchmark-only build exercises the median path alone.
-#[cfg_attr(
-    all(feature = "benchmark", not(any(test, feature = "python"))),
-    allow(dead_code)
-)]
-pub(crate) enum Reduction {
+#[non_exhaustive]
+pub enum Reduction {
+    /// Exact median with per-window selection. An even count averages the
+    /// two middle values.
     Median(InvalidPolicy),
+    /// Exact median with a vectorized, data-independent selection network.
+    /// The result equals [`Reduction::Median`]. Speed depends on the input
+    /// and the window.
     NetworkMedian(InvalidPolicy),
+    /// Mean with compensated summation.
     Mean(InvalidPolicy),
-    // The rolling traversal is exposed only by the Python extension.
-    #[cfg_attr(not(feature = "python"), allow(dead_code))]
+    /// Mean with exact running sums, rounded once to the output type.
+    /// Requires a rectangular neighborhood. It can differ from
+    /// [`Reduction::Mean`] in the last bits.
     RollingMean(InvalidPolicy),
+    /// Minimum in IEEE total order.
     Minimum(InvalidPolicy),
+    /// Maximum in IEEE total order.
     Maximum(InvalidPolicy),
+    /// Variance with `ddof` delta degrees of freedom (the `usize`).
     Variance(InvalidPolicy, usize),
+    /// Standard deviation with `ddof` delta degrees of freedom (the `usize`).
     Std(InvalidPolicy, usize),
     /// Zero-based rank in ascending total order (`-0.0` sorts before `+0.0`).
+    /// A rank at or above the retained count produces NaN.
     Rank(InvalidPolicy, usize),
 }
 

@@ -3,7 +3,7 @@
 use rayon::prelude::*;
 
 use crate::boundary::{map_index, BoundaryMode};
-use crate::error::KernelError;
+use crate::error::Error;
 use crate::exact_sum::{ExactFloat, ExactSum};
 use crate::reduction::InvalidPolicy;
 
@@ -74,11 +74,11 @@ impl Counts {
     }
 }
 
-fn zeros<T: Clone + Default>(length: usize) -> Result<Vec<T>, KernelError> {
+fn zeros<T: Clone + Default>(length: usize) -> Result<Vec<T>, Error> {
     let mut result = Vec::new();
     result
         .try_reserve_exact(length)
-        .map_err(|_| KernelError::Memory)?;
+        .map_err(|_| Error::Memory)?;
     result.resize(length, T::default());
     Ok(result)
 }
@@ -148,7 +148,7 @@ pub(crate) fn mean_into<T: ExactFloat>(
     cval: T,
     policy: InvalidPolicy,
     output: &mut [T],
-) -> Result<(), KernelError> {
+) -> Result<(), Error> {
     let rank = shape.len();
     if rank == 0
         || size.len() != rank
@@ -156,23 +156,23 @@ pub(crate) fn mean_into<T: ExactFloat>(
         || modes.len() != rank
         || size.contains(&0)
     {
-        return Err(KernelError::InvalidConfiguration(
+        return Err(Error::InvalidConfiguration(
             "invalid rectangular mean geometry",
         ));
     }
     let product = |items: &[usize]| {
-        items.iter().try_fold(1usize, |a, &b| {
-            a.checked_mul(b).ok_or(KernelError::Overflow)
-        })
+        items
+            .iter()
+            .try_fold(1usize, |a, &b| a.checked_mul(b).ok_or(Error::Overflow))
     };
     let length = product(shape)?;
     let volume = product(size)?;
     if length != input.len() || length != output.len() {
-        return Err(KernelError::LengthMismatch);
+        return Err(Error::LengthMismatch);
     }
     if matches!(policy, InvalidPolicy::Omit { min_count, .. } if min_count == 0 || min_count > volume)
     {
-        return Err(KernelError::InvalidConfiguration(
+        return Err(Error::InvalidConfiguration(
             "min_count must be within window support",
         ));
     }
@@ -180,7 +180,7 @@ pub(crate) fn mean_into<T: ExactFloat>(
     for axis in 0..rank {
         anchors[axis] = size[axis] as i128 / 2 + origin[axis] as i128;
         if !(0..size[axis] as i128).contains(&anchors[axis]) {
-            return Err(KernelError::InvalidConfiguration(
+            return Err(Error::InvalidConfiguration(
                 "origin must keep the anchor in the window",
             ));
         }
@@ -189,7 +189,7 @@ pub(crate) fn mean_into<T: ExactFloat>(
         return Ok(());
     }
     let (low_word, words) = word_span(input, cval, modes.contains(&BoundaryMode::Constant), volume);
-    let storage = length.checked_mul(words).ok_or(KernelError::Overflow)?;
+    let storage = length.checked_mul(words).ok_or(Error::Overflow)?;
     let mut previous = zeros::<u64>(storage)?;
     let mut next = zeros::<u64>(storage)?;
     let mut previous_counts = zeros::<Counts>(length)?;
@@ -278,7 +278,7 @@ pub(crate) fn mean_into<T: ExactFloat>(
                         count.add(added);
                     }
                 }
-                Ok::<(), KernelError>(())
+                Ok::<(), Error>(())
             })?;
         std::mem::swap(&mut previous, &mut next);
         std::mem::swap(&mut previous_counts, &mut next_counts);

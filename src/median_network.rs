@@ -2,7 +2,7 @@
 
 use reducers::Float;
 
-use crate::error::KernelError;
+use crate::error::Error;
 use crate::reduction::InvalidPolicy;
 
 /// IEEE floats with reversible integer keys in `total_cmp` order.
@@ -69,7 +69,7 @@ fn sort(
     length: usize,
     count: usize,
     comparisons: &mut Vec<Comparator>,
-) -> Result<(), KernelError> {
+) -> Result<(), Error> {
     if length > 1 && start < count {
         let half = length / 2;
         sort(start, half, count, comparisons)?;
@@ -85,7 +85,7 @@ fn merge(
     stride: usize,
     count: usize,
     comparisons: &mut Vec<Comparator>,
-) -> Result<(), KernelError> {
+) -> Result<(), Error> {
     if start >= count {
         return Ok(());
     }
@@ -95,16 +95,12 @@ fn merge(
         merge(start + stride, length, step, count, comparisons)?;
         for lower in (start + stride..start + length - stride).step_by(step) {
             if lower + stride < count {
-                comparisons
-                    .try_reserve(1)
-                    .map_err(|_| KernelError::Memory)?;
+                comparisons.try_reserve(1).map_err(|_| Error::Memory)?;
                 comparisons.push((lower, lower + stride, true, true));
             }
         }
     } else if start + stride < count {
-        comparisons
-            .try_reserve(1)
-            .map_err(|_| KernelError::Memory)?;
+        comparisons.try_reserve(1).map_err(|_| Error::Memory)?;
         comparisons.push((start, start + stride, true, true));
     }
     Ok(())
@@ -117,15 +113,11 @@ pub(crate) struct Network {
 }
 
 impl Network {
-    pub(crate) fn new(count: usize, policy: InvalidPolicy) -> Result<Self, KernelError> {
+    pub(crate) fn new(count: usize, policy: InvalidPolicy) -> Result<Self, Error> {
         if count == 0 {
-            return Err(KernelError::InvalidConfiguration(
-                "median needs at least one tap",
-            ));
+            return Err(Error::InvalidConfiguration("median needs at least one tap"));
         }
-        let wires = count
-            .checked_next_power_of_two()
-            .ok_or(KernelError::Overflow)?;
+        let wires = count.checked_next_power_of_two().ok_or(Error::Overflow)?;
         let mut comparisons = Vec::new();
         // Odd-even merges compare only ascending wires. Symbolic +infinity
         // padding therefore stays beyond `count` and needs no stored values.
@@ -133,8 +125,7 @@ impl Network {
         // A propagated-NaN median needs only the middle output wire(s).
         // Omission can change the rank, so all retained ranks remain live.
         let mut live = Vec::new();
-        live.try_reserve_exact(count)
-            .map_err(|_| KernelError::Memory)?;
+        live.try_reserve_exact(count).map_err(|_| Error::Memory)?;
         live.resize(count, false);
         match policy {
             InvalidPolicy::Propagate => {
@@ -221,14 +212,14 @@ impl Network {
 #[cfg(test)]
 mod tests {
     use super::{encode_plane, Network, NetworkFloat};
-    use crate::error::KernelError;
+    use crate::error::Error;
     use crate::reduction::InvalidPolicy;
 
     #[test]
     fn unrepresentable_padding_is_rejected_before_allocation() {
         assert!(matches!(
             Network::new(usize::MAX, InvalidPolicy::Propagate),
-            Err(KernelError::Overflow)
+            Err(Error::Overflow)
         ));
     }
 
