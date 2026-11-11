@@ -49,6 +49,18 @@ def _validate_method(method: object, allowed: tuple[str, ...]) -> None:
         raise ValueError(f"method must be one of {allowed}")
 
 
+def _median_kind(method: object, arguments: FilterArguments) -> str:
+    """Return the native median kind for `method`, rejecting unsupported windows."""
+    _validate_method(method, ("direct", "sortnet", "histogram"))
+    if method == "histogram" and arguments.footprint is not None:
+        raise ValueError("method='histogram' requires size, not footprint")
+    return {
+        "direct": "median",
+        "sortnet": "median_network",
+        "histogram": "median_histogram",
+    }[str(method)]
+
+
 def _separable_mean(
     arguments: FilterArguments, *, ignore_inf: bool | None
 ) -> NDArray[np.float32] | NDArray[np.float64]:
@@ -79,7 +91,7 @@ def median_filter(
     origin: int | tuple[int, ...] = 0,
     mode: BoundaryMode | tuple[BoundaryMode, ...] = "reflect",
     cval: float = 0.0,
-    method: Literal["direct", "sortnet"] = "direct",
+    method: Literal["direct", "sortnet", "histogram"] = "direct",
 ) -> NDArray[np.float32] | NDArray[np.float64]:
     """Apply an N-dimensional median filter.
 
@@ -105,10 +117,12 @@ def median_filter(
     cval : float, optional
         Value used beyond `constant` boundaries. It is cast to the input dtype.
         Default is `0.0`.
-    method : {'direct', 'sortnet'}, optional
+    method : {'direct', 'sortnet', 'histogram'}, optional
         `'direct'` (default) selects each window's median independently.
         `'sortnet'` uses an exact comparator network with the same results,
         including even windows, footprints, and shifted origins.
+        `'histogram'` slides a histogram of sample ranks with the same
+        results. It requires `size` and rejects `footprint`.
 
     Returns
     -------
@@ -124,15 +138,18 @@ def median_filter(
 
     `'sortnet'` preserves the direct method's numerical semantics. It uses a
     comparator network and buffers samples across interior row runs, which can
-    need more memory than `'direct'`. Neither method is fastest for every window.
+    need more memory than `'direct'`.
+
+    `'histogram'` also preserves these semantics. It sorts the samples of each
+    output block once, then updates a histogram of their ranks as the window
+    moves. Its cost per output is proportional to the window volume divided
+    by the largest window side, for example `2 * k` updates for a `k x k`
+    window. No method is fastest for every window.
     """
     arguments = validate_filter_arguments(
         array, size, mode, cval, footprint=footprint, origin=origin, min_count=1
     )
-    _validate_method(method, ("direct", "sortnet"))
-    return _window_filter(
-        "median_network" if method == "sortnet" else "median", arguments
-    )
+    return _window_filter(_median_kind(method, arguments), arguments)
 
 
 def nanmedian_filter(
@@ -145,7 +162,7 @@ def nanmedian_filter(
     cval: float = 0.0,
     ignore_inf: bool = False,
     min_count: int = 1,
-    method: Literal["direct", "sortnet"] = "direct",
+    method: Literal["direct", "sortnet", "histogram"] = "direct",
 ) -> NDArray[np.float32] | NDArray[np.float64]:
     """Apply an N-dimensional median filter while omitting NaN values.
 
@@ -175,10 +192,13 @@ def nanmedian_filter(
         Omit positive and negative infinity when `True`. Default is `False`.
     min_count : int, optional
         Minimum retained samples required for a result. Default is `1`.
-    method : {'direct', 'sortnet'}, optional
+    method : {'direct', 'sortnet', 'histogram'}, optional
         `'direct'` (default) selects each window's median independently.
         `'sortnet'` uses an exact comparator network with the same omission
         rules and results, including footprints and shifted origins.
+        `'histogram'` slides a histogram of sample ranks with the same
+        omission rules and results. It requires `size` and rejects
+        `footprint`.
 
     Returns
     -------
@@ -190,20 +210,18 @@ def nanmedian_filter(
     -----
     This function always omits NaNs. It is not a drop-in SciPy replacement.
     SciPy's median filter does not expose these omission semantics.
-    Both methods preserve the same retained-count, midpoint, and signed-zero
-    rules. `'sortnet'` uses more scratch memory for interior row runs and is
-    not universally faster than `'direct'`.
+    All methods preserve the same retained-count, midpoint, and signed-zero
+    rules. `'sortnet'` uses more scratch memory for interior row runs.
+    `'histogram'` cost per output is proportional to the window volume
+    divided by the largest window side. No method is fastest for every window.
     """
     if not isinstance(ignore_inf, (bool, np.bool_)):
         raise TypeError("ignore_inf must be a boolean")
     arguments = validate_filter_arguments(
         array, size, mode, cval, footprint=footprint, origin=origin, min_count=min_count
     )
-    _validate_method(method, ("direct", "sortnet"))
     return _window_filter(
-        "median_network" if method == "sortnet" else "median",
-        arguments,
-        ignore_inf=bool(ignore_inf),
+        _median_kind(method, arguments), arguments, ignore_inf=bool(ignore_inf)
     )
 
 
@@ -933,6 +951,7 @@ def rank_filter(
     origin: int | tuple[int, ...] = 0,
     mode: BoundaryMode | tuple[BoundaryMode, ...] = "reflect",
     cval: float = 0.0,
+    method: Literal["direct", "histogram"] = "direct",
 ) -> NDArray[np.float32] | NDArray[np.float64]:
     """Return the value of a given rank in each sorted window.
 
@@ -959,6 +978,11 @@ def rank_filter(
     cval : float, optional
         Value used beyond `constant` boundaries, cast to the input dtype.
         Default is `0.0`.
+    method : {'direct', 'histogram'}, optional
+        `'direct'` (default) selects each window's value independently.
+        `'histogram'` slides a histogram of sample ranks with the same
+        results, as in `median_filter`. It requires `size` and rejects
+        `footprint`.
 
     Returns
     -------
@@ -979,7 +1003,14 @@ def rank_filter(
     )
     if not -arguments.count <= position < arguments.count:
         raise ValueError("rank must satisfy -n <= rank < n for n window elements")
-    return _window_filter("rank", arguments, parameter=position % arguments.count)
+    _validate_method(method, ("direct", "histogram"))
+    if method == "histogram" and arguments.footprint is not None:
+        raise ValueError("method='histogram' requires size, not footprint")
+    return _window_filter(
+        "rank_histogram" if method == "histogram" else "rank",
+        arguments,
+        parameter=position % arguments.count,
+    )
 
 
 def get_num_threads() -> int:

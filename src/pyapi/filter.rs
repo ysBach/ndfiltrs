@@ -258,9 +258,10 @@ fn no_hooks(
 
 /// Apply one generic window reduction.
 ///
-/// `kind` is one of `median`, `mean`, `min`, `max`, `var`, `std`, or
-/// `rank`. `parameter` is `ddof` for `var`/`std` and the nonnegative rank
-/// for `rank`; other kinds ignore it.
+/// `kind` is one of `median`, `median_network`, `median_histogram`, `mean`,
+/// `mean_rolling`, `min`, `max`, `var`, `std`, `rank`, or `rank_histogram`.
+/// `parameter` is `ddof` for `var`/`std` and the nonnegative rank for the
+/// rank kinds; other kinds ignore it.
 #[pyfunction(signature = (array, kind, size, footprint, origin, mode, cval, omit_nan, ignore_inf, min_count, parameter))]
 #[allow(clippy::too_many_arguments)]
 pub(crate) fn window_filter<'py>(
@@ -288,6 +289,7 @@ pub(crate) fn window_filter<'py>(
     let reduction = match kind {
         "median" => Reduction::Median(policy),
         "median_network" => Reduction::NetworkMedian(policy),
+        "median_histogram" => Reduction::HistogramMedian(policy),
         "mean" => Reduction::Mean(policy),
         "mean_rolling" => Reduction::RollingMean(policy),
         "min" => Reduction::Minimum(policy),
@@ -295,6 +297,7 @@ pub(crate) fn window_filter<'py>(
         "var" => Reduction::Variance(policy, parameter),
         "std" => Reduction::Std(policy, parameter),
         "rank" => Reduction::Rank(policy, parameter),
+        "rank_histogram" => Reduction::HistogramRank(policy, parameter),
         _ => return Err(PyValueError::new_err("unsupported window filter kind")),
     };
     let window = WindowSpec {
