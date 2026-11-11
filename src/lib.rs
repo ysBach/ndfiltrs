@@ -10,6 +10,7 @@
 //! - Linear filters: [`Convolution`], [`separable_smooth`].
 //! - Savitzky-Golay polynomial fits that skip missing samples:
 //!   [`SavitzkyGolay`].
+//! - Per-pixel window sizes: [`variable_mean`] with [`VariableWindow`].
 //! - Mask-directed repair: [`fixpix_linear`], [`fixpix_median`],
 //!   [`fixpix_mean`].
 //!
@@ -64,6 +65,7 @@ mod robust;
 mod robust_plan;
 mod savgol;
 mod separable;
+mod variable;
 mod window;
 
 pub use boundary::BoundaryMode;
@@ -77,6 +79,7 @@ pub use repair::{fixpix_linear, fixpix_mean, fixpix_median};
 pub use robust::{ClipCenter, ClipConfig, ClipSpread, ClipStatistic, RobustReduction};
 pub use robust_plan::RobustFilter;
 pub use savgol::{FitBoundary, PolynomialBasis, SavgolKernel, SavitzkyGolay};
+pub use variable::{variable_mean, variable_mean_into, VariableWindow};
 
 #[cfg(feature = "benchmark")]
 #[doc(hidden)]
