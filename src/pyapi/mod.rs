@@ -4,6 +4,7 @@ mod repair;
 mod robust;
 mod savgol;
 mod separable;
+mod variable;
 
 use pyo3::prelude::*;
 
@@ -18,6 +19,7 @@ pub(crate) fn _core(module: &Bound<'_, PyModule>) -> PyResult<()> {
     module.add_function(wrap_pyfunction!(repair::fixpix_mean, module)?)?;
     module.add_function(wrap_pyfunction!(filter::window_filter, module)?)?;
     module.add_function(wrap_pyfunction!(filter::get_num_threads, module)?)?;
+    module.add_function(wrap_pyfunction!(variable::variable_mean, module)?)?;
     #[cfg(feature = "test-hooks")]
     {
         module.add_class::<filter::DetachProbe>()?;

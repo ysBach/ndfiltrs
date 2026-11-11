@@ -102,3 +102,13 @@ def robust_filter(
     modify_sample_size: bool = False,
     pearson: float = 2.5,
 ) -> NDArray[np.float32] | NDArray[np.float64]: ...
+def variable_mean(
+    array: NDArray[np.float32] | NDArray[np.float64],
+    sizes: NDArray[np.uint64],
+    per_axis: bool,
+    mode: tuple[str, ...],
+    cval: float,
+    omit_nan: bool,
+    ignore_inf: bool,
+    min_count: int,
+) -> NDArray[np.float32] | NDArray[np.float64]: ...

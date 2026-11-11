@@ -49,6 +49,7 @@ from ._robust import (
     sigma_clipped_filter,
 )
 from ._savgol import nansavgol_filter, savgol_filter
+from ._variable import nanvariable_mean_filter, variable_mean_filter
 
 __all__ = [
     "biweight_location_filter",
@@ -89,6 +90,7 @@ __all__ = [
     "nansavgol_filter",
     "nanstd_filter",
     "nanvar_filter",
+    "nanvariable_mean_filter",
     "percentile_filter",
     "prewitt",
     "rank_filter",
@@ -97,6 +99,7 @@ __all__ = [
     "sobel",
     "std_filter",
     "var_filter",
+    "variable_mean_filter",
     "white_tophat",
 ]
 __version__ = "0.1.0"
