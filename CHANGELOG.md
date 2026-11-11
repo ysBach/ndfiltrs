@@ -5,6 +5,25 @@
 First release of `ndfiltrs`: N-dimensional neighborhood filters for
 NumPy, implemented in Rust.
 
+### License
+
+- `ndfiltrs` uses the BSD 3-Clause License, the same as astroimred.
+
+### Rust API
+
+- The crate is published on crates.io. Plans validate geometry and
+  parameters once per array shape, then filter any number of C-ordered `f32`
+  or `f64` buffers:
+  - `WindowFilter` / `window_filter`: median, mean, min, max, var, std, rank.
+    The Python window filters use the same plans.
+  - `RobustFilter`: percentile, MAD, mode, biweight location and scale, and
+    sigma clipping (`ClipConfig`).
+  - `Convolution` with `WeightKernel` and `WeightPolicy`, and
+    `separable_smooth`.
+  - `fixpix_linear`, `fixpix_median`, and `fixpix_mean` repair in place.
+- Shared types: `Neighborhood`, `BoundaryMode`, `InvalidPolicy`, `Error`, and
+  the sealed `FilterFloat`. Public enums are `#[non_exhaustive]`.
+
 ### Performance
 
 - Median filters offer exact per-window selection (`method="direct"`) and

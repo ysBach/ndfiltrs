@@ -281,21 +281,47 @@ from untested claims. No native IRAF `fixpix` benchmark is available.
 Comparisons with [astroimred](https://github.com/ysBach/astroimred)'s `fixpix`
 do not establish IRAF performance.
 
-Release tooling targets GitHub and PyPI. Manual release-workflow runs build and
-test without uploading to a registry. Matching version tags publish only after
+Release tooling targets GitHub, PyPI, and crates.io. Manual release-workflow
+runs build and test without uploading to a registry. Matching version tags publish only after
 the required CI and wheel jobs pass. See [RELEASING.md](RELEASING.md) for the
 first-project setup, rehearsal, tagging commands, and the shared publishing
 convention for these packages.
 
 The build pins [reducers 0.4.0](https://crates.io/crates/reducers/0.4.0) without a local path
-override. Publishing requires a PyPI trusted publisher and a successful hosted
-rehearsal. Consult GitHub Actions for current Linux/macOS/Windows build results.
-The Rust API remains private, so crates.io publication is disabled.
+override. Publishing requires PyPI and crates.io trusted publishers and a
+successful hosted rehearsal. Consult GitHub Actions for current
+Linux/macOS/Windows build results.
 See [source attribution](docs/semantics.md#source-attribution) for provenance.
+
+## Rust crate
+
+The `ndfiltrs` crate exposes the same kernels on C-ordered `f32`/`f64`
+slices: window statistics (`WindowFilter`), robust statistics including
+percentiles and sigma clipping (`RobustFilter`), convolution
+(`Convolution`, `separable_smooth`), and mask-directed repair
+(`fixpix_linear`, `fixpix_median`, `fixpix_mean`). Gaussian, derivative,
+and morphology helpers remain Python-level compositions of these kernels.
+
+```rust
+use ndfiltrs::{InvalidPolicy, Neighborhood, Reduction, WindowFilter};
+
+let skip_nan = InvalidPolicy::Omit { ignore_inf: false, min_count: 1 };
+let plan = WindowFilter::new(
+    &[2048, 2048],
+    &Neighborhood::rectangular([5, 5]),
+    Reduction::Median(skip_nan),
+    0.0_f32,
+)?;
+// Reuse `plan` for every frame with this shape.
+let filtered = plan.apply(&frame)?;
+```
+
+The default features have no PyO3 dependency. See the
+[crate documentation](https://docs.rs/ndfiltrs).
 
 ## License
 
-`ndfiltrs` uses the [MIT License](LICENSE).
+`ndfiltrs` uses the [BSD 3-Clause License](LICENSE).
 The `fixpix` behavioral source is [astroimred](https://github.com/ysBach/astroimred).
 The package includes its [BSD notice](python/ndfiltrs/licenses/astroimred-BSD-3-Clause.txt).
 The Rust [reducers 0.4.0](https://crates.io/crates/reducers/0.4.0) dependency
