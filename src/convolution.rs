@@ -31,17 +31,17 @@ pub enum WeightPolicy {
 /// Validated geometry with zero-weight taps removed before sampling.
 #[derive(Clone, Debug)]
 pub(crate) struct ConvolutionConfig<T> {
-    shape: Vec<usize>,
+    pub(crate) shape: Vec<usize>,
     strides: Vec<usize>,
     modes: Vec<BoundaryMode>,
-    cval: T,
-    weights: Vec<f64>,
+    pub(crate) cval: T,
+    pub(crate) weights: Vec<f64>,
     offsets: Vec<i128>,
     flat_offsets: Vec<isize>,
     low: Vec<i128>,
     high: Vec<i128>,
-    policy: WeightPolicy,
-    output_len: usize,
+    pub(crate) policy: WeightPolicy,
+    pub(crate) output_len: usize,
 }
 
 fn checked_product(shape: &[usize]) -> Result<usize, Error> {
@@ -200,7 +200,7 @@ impl<T: Copy> ConvolutionConfig<T> {
 }
 
 /// Split finite nonzero values into a signed mantissa in [1, 2) and exponent.
-fn split(value: f64) -> (f64, i32) {
+pub(crate) fn split(value: f64) -> (f64, i32) {
     let bits = value.to_bits();
     let exponent = ((bits >> 52) & 0x7ff) as i32;
     let fraction = bits & ((1u64 << 52) - 1);
@@ -218,7 +218,7 @@ fn split(value: f64) -> (f64, i32) {
 }
 
 /// Apply a binary scale without forming an overflowing or zero scale factor.
-fn scale_binary(value: f64, exponent: i32) -> f64 {
+pub(crate) fn scale_binary(value: f64, exponent: i32) -> f64 {
     if value == 0.0 {
         return value;
     }
@@ -402,6 +402,69 @@ impl Scratch {
             pairs: Vec::new(),
         })
     }
+}
+
+/// Split C-order index `flat` into `coordinates`.
+///
+/// Returns `true` when every tap of this output lies inside the array, so
+/// [`tap_source`] can use the precomputed flat displacements. `convolve_at`
+/// keeps its own inline copy of this traversal: sharing it measurably slowed
+/// the existing single-thread paths.
+#[inline(always)]
+pub(crate) fn locate<T>(
+    config: &ConvolutionConfig<T>,
+    flat: usize,
+    coordinates: &mut [usize],
+) -> bool {
+    let mut remainder = flat;
+    let mut interior = config.flat_offsets.len() == config.weights.len();
+    for (axis, coordinate) in coordinates.iter_mut().enumerate() {
+        *coordinate = remainder / config.strides[axis];
+        remainder %= config.strides[axis];
+        let position = *coordinate as i128;
+        interior &= position + config.low[axis] >= 0
+            && position + config.high[axis] < config.shape[axis] as i128;
+    }
+    interior
+}
+
+/// C-order source index that tap `tap` reads for the output at `flat`.
+///
+/// Returns `None` when a constant boundary supplies the sample. `coordinates`
+/// and `interior` come from [`locate`] for the same `flat`.
+#[inline(always)]
+pub(crate) fn tap_source<T>(
+    config: &ConvolutionConfig<T>,
+    flat: usize,
+    coordinates: &[usize],
+    interior: bool,
+    tap: usize,
+) -> Result<Option<usize>, Error> {
+    if interior {
+        // Each axis is in bounds, so this signed displacement stays in input.
+        return Ok(Some(flat.wrapping_add_signed(config.flat_offsets[tap])));
+    }
+    let rank = coordinates.len();
+    let offsets = &config.offsets[tap * rank..][..rank];
+    let mut source = 0usize;
+    for axis in 0..rank {
+        let coordinate = (coordinates[axis] as i128)
+            .checked_add(offsets[axis])
+            .ok_or(Error::Overflow)?;
+        match map_index(coordinate, config.shape[axis], config.modes[axis])? {
+            Some(mapped) => {
+                source = source
+                    .checked_add(
+                        mapped
+                            .checked_mul(config.strides[axis])
+                            .ok_or(Error::Overflow)?,
+                    )
+                    .ok_or(Error::Overflow)?;
+            }
+            None => return Ok(None),
+        }
+    }
+    Ok(Some(source))
 }
 
 /// Evaluate one output at C-order flat index `flat`.

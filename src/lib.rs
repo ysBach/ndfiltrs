@@ -11,6 +11,8 @@
 //! - Savitzky-Golay polynomial fits that skip missing samples:
 //!   [`SavitzkyGolay`].
 //! - Per-pixel window sizes: [`variable_mean`] with [`VariableWindow`].
+//! - Noise propagation: [`Convolution::apply_with_variance`],
+//!   [`MatchedFilter`].
 //! - Mask-directed repair: [`fixpix_linear`], [`fixpix_median`],
 //!   [`fixpix_mean`].
 //!
@@ -66,12 +68,13 @@ mod robust_plan;
 mod savgol;
 mod separable;
 mod variable;
+mod variance;
 mod window;
 
 pub use boundary::BoundaryMode;
 pub use convolution::WeightPolicy;
 pub use error::Error;
-pub use linear_plan::{separable_smooth, Convolution, WeightKernel};
+pub use linear_plan::{separable_smooth, Convolution, MatchedFilter, MatchedMaps, WeightKernel};
 pub use location::ModeEstimator;
 pub use plan::{window_filter, FilterFloat, Neighborhood, WindowFilter};
 pub use reduction::{InvalidPolicy, Reduction};
@@ -80,6 +83,7 @@ pub use robust::{ClipCenter, ClipConfig, ClipSpread, ClipStatistic, RobustReduct
 pub use robust_plan::RobustFilter;
 pub use savgol::{FitBoundary, PolynomialBasis, SavgolKernel, SavitzkyGolay};
 pub use variable::{variable_mean, variable_mean_into, VariableWindow};
+pub use variance::{MatchedWeighting, NoiseMap};
 
 #[cfg(feature = "benchmark")]
 #[doc(hidden)]
