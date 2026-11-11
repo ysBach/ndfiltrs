@@ -30,6 +30,11 @@ pub enum Reduction {
     /// The result equals [`Reduction::Median`]. Speed depends on the input
     /// and the window.
     NetworkMedian(InvalidPolicy),
+    /// Exact median from a sliding histogram of block-local ranks. The
+    /// result equals [`Reduction::Median`]. Requires a rectangular
+    /// neighborhood. The cost per output is proportional to the window
+    /// volume divided by the largest window side, not to the volume.
+    HistogramMedian(InvalidPolicy),
     /// Mean with compensated summation.
     Mean(InvalidPolicy),
     /// Mean with exact running sums, rounded once to the output type.
@@ -47,6 +52,10 @@ pub enum Reduction {
     /// Zero-based rank in ascending total order (`-0.0` sorts before `+0.0`).
     /// A rank at or above the retained count produces NaN.
     Rank(InvalidPolicy, usize),
+    /// Zero-based rank (the `usize`) from the same sliding histogram as
+    /// [`Reduction::HistogramMedian`]. The result equals [`Reduction::Rank`].
+    /// Requires a rectangular neighborhood.
+    HistogramRank(InvalidPolicy, usize),
 }
 
 impl Reduction {
@@ -54,13 +63,15 @@ impl Reduction {
         match self {
             Self::Median(policy)
             | Self::NetworkMedian(policy)
+            | Self::HistogramMedian(policy)
             | Self::Mean(policy)
             | Self::RollingMean(policy)
             | Self::Minimum(policy)
             | Self::Maximum(policy)
             | Self::Variance(policy, _)
             | Self::Std(policy, _)
-            | Self::Rank(policy, _) => policy,
+            | Self::Rank(policy, _)
+            | Self::HistogramRank(policy, _) => policy,
         }
     }
 
@@ -90,7 +101,7 @@ impl Reduction {
             }
         }
         match self {
-            Self::Median(_) | Self::NetworkMedian(_) => {
+            Self::Median(_) | Self::NetworkMedian(_) | Self::HistogramMedian(_) => {
                 T::from_f64(reducers::reducers_1d::median_valid_in_place(values))
             }
             Self::Mean(_) | Self::RollingMean(_) => crate::mean::mean_valid(values),
@@ -106,7 +117,7 @@ impl Reduction {
                 .unwrap_or_else(T::nan),
             Self::Variance(_, ddof) => crate::dispersion::dispersion_valid(values, ddof, false),
             Self::Std(_, ddof) => crate::dispersion::dispersion_valid(values, ddof, true),
-            Self::Rank(_, rank) => {
+            Self::Rank(_, rank) | Self::HistogramRank(_, rank) => {
                 if rank >= values.len() {
                     return T::nan();
                 }

@@ -49,6 +49,7 @@ mod exact_sum;
 mod extrema;
 mod filter_nd;
 mod fixpix;
+mod histogram;
 mod linear_plan;
 mod location;
 mod mean;

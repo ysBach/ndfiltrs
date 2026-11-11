@@ -4,6 +4,7 @@ use crate::boundary::BoundaryMode;
 use crate::error::Error;
 use crate::exact_sum::ExactFloat;
 use crate::filter_nd::FilterConfig;
+use crate::histogram::Statistic;
 use crate::median_network::NetworkFloat;
 use crate::reduction::{InvalidPolicy, Reduction};
 use crate::window::Window;
@@ -136,6 +137,13 @@ enum Kernel<T> {
         modes: Vec<BoundaryMode>,
         policy: InvalidPolicy,
     },
+    Histogram {
+        size: Vec<usize>,
+        origin: Vec<isize>,
+        modes: Vec<BoundaryMode>,
+        policy: InvalidPolicy,
+        statistic: Statistic,
+    },
 }
 
 /// Check rectangular geometry without building per-tap offsets.
@@ -201,6 +209,10 @@ fn validate_rectangular(
 ///   direct window traversal bit for bit.
 /// - [`Reduction::RollingMean`] needs a rectangular neighborhood. It uses
 ///   exact running sums and rounds once to `T`.
+/// - [`Reduction::HistogramMedian`] and [`Reduction::HistogramRank`] need a
+///   rectangular neighborhood. They rank the samples of each output block and
+///   slide a histogram of those ranks. The result equals
+///   [`Reduction::Median`] or [`Reduction::Rank`] bit for bit.
 /// - All other cases visit each window directly.
 ///
 /// # Examples
@@ -236,8 +248,8 @@ impl<T: FilterFloat> WindowFilter<T> {
     /// # Errors
     ///
     /// Returns [`Error::InvalidConfiguration`] for a rank mismatch, an empty
-    /// window or footprint, an origin outside the window, a `min_count` outside `1..=window size`, or a rolling mean with
-    /// a footprint. Returns [`Error::LengthMismatch`] when a footprint mask
+    /// window or footprint, an origin outside the window, a `min_count` outside `1..=window size`, or a rolling mean or
+    /// histogram reduction with a footprint. Returns [`Error::LengthMismatch`] when a footprint mask
     /// length differs from the product of its shape. Returns
     /// [`Error::Overflow`] or [`Error::Memory`] when the shape is too large.
     ///
@@ -277,6 +289,25 @@ impl<T: FilterFloat> WindowFilter<T> {
                     origin,
                     modes,
                     policy,
+                }
+            }
+            Reduction::HistogramMedian(policy) | Reduction::HistogramRank(policy, _) => {
+                if !rectangular {
+                    return Err(Error::InvalidConfiguration(
+                        "histogram reductions require rectangular size, not footprint",
+                    ));
+                }
+                validate_rectangular(shape, &neighborhood.size, &origin, &modes, policy)?;
+                crate::histogram::validate_support(shape, &neighborhood.size)?;
+                Kernel::Histogram {
+                    size: neighborhood.size.clone(),
+                    origin,
+                    modes,
+                    policy,
+                    statistic: match reduction {
+                        Reduction::HistogramRank(_, rank) => Statistic::Rank(rank),
+                        _ => Statistic::Median,
+                    },
                 }
             }
             _ => Kernel::Direct(FilterConfig::from_window(
@@ -375,6 +406,23 @@ impl<T: FilterFloat> WindowFilter<T> {
                 *policy,
                 output,
             ),
+            Kernel::Histogram {
+                size,
+                origin,
+                modes,
+                policy,
+                statistic,
+            } => crate::histogram::order_statistic_into(
+                input,
+                &self.shape,
+                size,
+                origin,
+                modes,
+                self.cval,
+                *policy,
+                *statistic,
+                output,
+            ),
         }
     }
 }
@@ -456,10 +504,16 @@ mod tests {
         let plan = WindowFilter::<f32>::new(&[4], &rect, Reduction::Median(SKIP), 0.0).unwrap();
         assert_eq!(plan.apply(&[1.0; 3]), Err(Error::LengthMismatch));
         let footprint = Neighborhood::footprint([3], [true, false, true]);
-        assert!(matches!(
-            WindowFilter::<f32>::new(&[4], &footprint, Reduction::RollingMean(SKIP), 0.0),
-            Err(Error::InvalidConfiguration(_))
-        ));
+        for reduction in [
+            Reduction::RollingMean(SKIP),
+            Reduction::HistogramMedian(SKIP),
+            Reduction::HistogramRank(SKIP, 0),
+        ] {
+            assert!(matches!(
+                WindowFilter::<f32>::new(&[4], &footprint, reduction, 0.0),
+                Err(Error::InvalidConfiguration(_))
+            ));
+        }
         let too_many = InvalidPolicy::Omit {
             ignore_inf: false,
             min_count: 4,
@@ -467,6 +521,7 @@ mod tests {
         for reduction in [
             Reduction::Maximum(too_many),
             Reduction::RollingMean(too_many),
+            Reduction::HistogramMedian(too_many),
         ] {
             assert!(matches!(
                 WindowFilter::<f64>::new(&[4], &rect, reduction, 0.0),
@@ -479,11 +534,12 @@ mod tests {
         ));
     }
 
-    fn all_paths() -> [Reduction; 3] {
+    fn all_paths() -> [Reduction; 4] {
         [
             Reduction::Median(SKIP),
             Reduction::Maximum(SKIP),
             Reduction::RollingMean(SKIP),
+            Reduction::HistogramMedian(SKIP),
         ]
     }
 
@@ -548,6 +604,7 @@ mod tests {
         let hood = Neighborhood::rectangular([3]);
         for reduction in [
             Reduction::Rank(InvalidPolicy::Propagate, 3),
+            Reduction::HistogramRank(InvalidPolicy::Propagate, 3),
             Reduction::Variance(InvalidPolicy::Propagate, 3),
             Reduction::Std(InvalidPolicy::Propagate, 5),
         ] {
