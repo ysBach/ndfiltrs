@@ -8,6 +8,8 @@
 //! - Robust statistics (percentile, MAD, mode, biweight, sigma clipping):
 //!   [`RobustFilter`].
 //! - Linear filters: [`Convolution`], [`separable_smooth`].
+//! - Savitzky-Golay polynomial fits that skip missing samples:
+//!   [`SavitzkyGolay`].
 //! - Mask-directed repair: [`fixpix_linear`], [`fixpix_median`],
 //!   [`fixpix_mean`].
 //!
@@ -60,6 +62,7 @@ mod reduction;
 mod repair;
 mod robust;
 mod robust_plan;
+mod savgol;
 mod separable;
 mod window;
 
@@ -73,6 +76,7 @@ pub use reduction::{InvalidPolicy, Reduction};
 pub use repair::{fixpix_linear, fixpix_mean, fixpix_median};
 pub use robust::{ClipCenter, ClipConfig, ClipSpread, ClipStatistic, RobustReduction};
 pub use robust_plan::RobustFilter;
+pub use savgol::{FitBoundary, PolynomialBasis, SavgolKernel, SavitzkyGolay};
 
 #[cfg(feature = "benchmark")]
 #[doc(hidden)]
