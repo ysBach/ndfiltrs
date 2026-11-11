@@ -10,6 +10,7 @@ See the [Quickstart](../quickstart.qmd) for small examples and the
 | --- | --- |
 | [Neighborhood-statistic filtering semantics](semantics.qmd) | Windows, boundaries, missing samples, and local statistics. |
 | [Convolution and Gaussian filters](convolution.qmd) | Weighted sums, smoothing, and Gaussian derivatives. |
+| [Savitzky-Golay filters](savgol.qmd) | Local polynomial fits and derivatives with missing samples. |
 | [N-dimensional kernels](kernels.qmd) | Box, top-hat, ring, Gaussian, Moffat, and Student-t weights. |
 | [Percentiles, MAD, and sigma clipping](robust.qmd) | Robust estimates of local level and scatter. |
 | [Edges and morphology](morphology.qmd) | Edge operators and grey morphology. |

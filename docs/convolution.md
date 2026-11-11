@@ -107,7 +107,9 @@ For example, weights `[1., 2., 1.]` around data `[1., NaN, 5.]` produce
 `(1 + 5) / (1 + 1) = 3.0`. With `min_count=3`, the result is NaN instead.
 
 Signed derivative kernels belong in `convolve` or `correlate`, because normalizing
-their retained weights would change the derivative definition.
+their retained weights would change the derivative definition. For derivatives
+of data with missing samples, use `nansavgol_filter`, which refits a local
+polynomial to the retained samples (see [Savitzky-Golay filters](savgol.md)).
 
 ## Gaussian smoothing and derivatives
 

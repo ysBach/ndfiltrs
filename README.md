@@ -162,6 +162,18 @@ product weights. Axis grouping can change floating-point rounding.
 See [convolution and Gaussian semantics](docs/convolution.md) for orientation,
 support, derivative conventions, and numerical limits.
 
+## Savitzky-Golay filters
+
+```python
+fitted = nf.nansavgol_filter(image, 7, 2)  # quadratic surface fit per 7x7 window
+dx = nf.nansavgol_filter(image, 7, 2, deriv=(0, 1))  # its x derivative
+```
+
+Each window fits a polynomial by least squares to the samples that remain
+after NaNs are left out. Windows that cannot determine the polynomial give NaN.
+`savgol_filter` propagates NaNs and matches `scipy.signal.savgol_filter` on
+complete 1-D data. See [Savitzky-Golay filters](docs/savgol.md).
+
 ## Kernels
 
 ```python

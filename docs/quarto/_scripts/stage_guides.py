@@ -16,6 +16,7 @@ SITE = REPOSITORY / "docs" / "quarto"
 GUIDES = (
     "semantics",
     "convolution",
+    "savgol",
     "kernels",
     "robust",
     "morphology",

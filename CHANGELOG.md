@@ -24,6 +24,9 @@ NumPy, implemented in Rust.
 - Shared types: `Neighborhood`, `BoundaryMode`, `InvalidPolicy`, `Error`, and
   the sealed `FilterFloat`. Public enums are `#[non_exhaustive]`.
 
+- `SavitzkyGolay` with `SavgolKernel`, `PolynomialBasis`, and
+  `FitBoundary`: N-D Savitzky-Golay fits that skip missing samples.
+
 ### Performance
 
 - Median filters offer exact per-window selection (`method="direct"`) and
@@ -82,6 +85,10 @@ NumPy, implemented in Rust.
   `method="separable"`), `nangaussian_filter`, `gaussian_laplace`, and
   `gaussian_gradient_magnitude`. Use `axes=(-2, -1)` to filter each plane
   of a cube separately.
+- Savitzky-Golay: `savgol_filter` matches `scipy.signal.savgol_filter` on
+  complete 1-D data and extends it to N-D. `nansavgol_filter` refits each
+  window's polynomial to the samples that remain, so smoothing and
+  derivatives work on data with NaNs or a mask.
 - Kernels: `ndfiltrs.kernels` builds N-D `box`, `tophat`, `ring`, `gaussian`,
   `moffat`, and `student_t` weights, with optional rotation and subpixel
   oversampling. `kernels.sample` samples any function or Astropy model.

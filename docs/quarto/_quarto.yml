@@ -90,6 +90,11 @@ quartodoc:
         - nangaussian_filter
         - gaussian_laplace
         - gaussian_gradient_magnitude
+    - title: Savitzky-Golay filters
+      desc: Local least-squares polynomial fits and derivatives that skip missing samples.
+      contents:
+        - savgol_filter
+        - nansavgol_filter
     - title: Kernels
       desc: N-D weights for convolution and footprints for window filters.
       contents:
