@@ -34,6 +34,12 @@ from ._morphology import (
     morphological_laplace,
     white_tophat,
 )
+from ._noise import (
+    MatchedFilterResult,
+    convolve_variance,
+    matched_filter,
+    nanconvolve_variance,
+)
 from ._repair import fixpix
 from ._robust import (
     biweight_location_filter,
@@ -52,10 +58,12 @@ from ._savgol import nansavgol_filter, savgol_filter
 from ._variable import nanvariable_mean_filter, variable_mean_filter
 
 __all__ = [
+    "MatchedFilterResult",
     "biweight_location_filter",
     "biweight_scale_filter",
     "black_tophat",
     "convolve",
+    "convolve_variance",
     "correlate",
     "fixpix",
     "gaussian_filter",
@@ -68,6 +76,7 @@ __all__ = [
     "kernels",
     "laplace",
     "mad_filter",
+    "matched_filter",
     "max_filter",
     "mean_filter",
     "median_filter",
@@ -78,6 +87,7 @@ __all__ = [
     "nanbiweight_location_filter",
     "nanbiweight_scale_filter",
     "nanconvolve",
+    "nanconvolve_variance",
     "nancorrelate",
     "nangaussian_filter",
     "nanmad_filter",

@@ -56,6 +56,22 @@ def convolve(
     min_count: int,
     normalize: bool = False,
 ) -> NDArray[np.float32] | NDArray[np.float64]: ...
+def convolve_noise(
+    array: NDArray[np.float32] | NDArray[np.float64],
+    noise: NDArray[np.float32] | NDArray[np.float64],
+    weights: NDArray[np.float64],
+    mode: tuple[BoundaryMode, ...],
+    cval: float,
+    origin: tuple[int, ...],
+    correlate: bool,
+    estimator: Literal["sum", "mean", "amplitude"],
+    inverse_weighting: bool,
+    inverse_noise: bool,
+    omit_nan: bool,
+    ignore_inf: bool,
+    min_count: int,
+    with_snr: bool,
+) -> list[NDArray[np.float32] | NDArray[np.float64]]: ...
 def get_num_threads() -> int: ...
 def savgol_filter(
     array: NDArray[np.float32] | NDArray[np.float64],

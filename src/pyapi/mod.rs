@@ -5,12 +5,14 @@ mod robust;
 mod savgol;
 mod separable;
 mod variable;
+mod variance;
 
 use pyo3::prelude::*;
 
 #[pymodule]
 pub(crate) fn _core(module: &Bound<'_, PyModule>) -> PyResult<()> {
     module.add_function(wrap_pyfunction!(convolution::convolve, module)?)?;
+    module.add_function(wrap_pyfunction!(variance::convolve_noise, module)?)?;
     module.add_function(wrap_pyfunction!(separable::separable_smooth, module)?)?;
     module.add_function(wrap_pyfunction!(robust::robust_filter, module)?)?;
     module.add_function(wrap_pyfunction!(savgol::savgol_filter, module)?)?;
