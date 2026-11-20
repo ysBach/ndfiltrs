@@ -1,4 +1,4 @@
-# Per-pixel window means
+# Variable window means
 
 `variable_mean_filter` and `nanvariable_mean_filter` average each pixel over
 its own rectangular window. A second integer array, with the input's shape,

@@ -1,4 +1,4 @@
-# N-dimensional kernels
+# Build kernels
 
 ```python
 import numpy as np

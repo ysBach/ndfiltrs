@@ -1,4 +1,4 @@
-# Convolution and Gaussian filters
+# Convolution and smoothing
 
 Use `convolve` for weighted sums and `nanconvolve` for weighted smoothing with
 missing samples. They have different normalization contracts even when the

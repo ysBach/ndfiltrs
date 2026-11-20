@@ -11,6 +11,11 @@ pre {
   margin-top: 0.8rem;
 }
 
+main code a.api-symbol {
+  color: var(--bs-link-color);
+  text-decoration: underline;
+}
+
 /* Keep every API link reachable on short and narrow screens. */
 .navbar .dropdown-menu {
   max-height: 70vh;

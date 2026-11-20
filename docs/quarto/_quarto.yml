@@ -1,6 +1,7 @@
 project:
   type: website
   output-dir: _site
+  post-render: _scripts/link_api.py
   render:
     - "*.qmd"
     - "guides/*.qmd"
@@ -135,6 +136,6 @@ quartodoc:
       contents:
         - get_num_threads
   renderer:
-    style: markdown
+    style: _renderer.py
     display_name: short
     table_style: description-list

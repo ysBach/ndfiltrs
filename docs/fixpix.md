@@ -1,6 +1,6 @@
-# Masked-pixel repair
+# Repair bad pixels
 
-```text
+```python
 fixpix(array, mask=None, *, method=None, priority=None,
        size=None, footprint=None, kernel=None, origin=None, mode=None,
        cval=None, ignore_inf=None, min_count=None, copy=True)
@@ -58,7 +58,8 @@ A selected run that spans its whole axis has no anchors and performs no write.
 There is no fallback to a longer run on another axis.
 
 Crossing runs follow the final result of repeated C-order whole-run writes in
-[astroimred.fixpix](https://github.com/ysBach/astroimred/blob/fb70cae872406f907175e3b47d497ffe14b8c238/src/astroimred/imutil/pixels.py#L114).
+`astroimred.fixpix`
+([implementation used for comparison](https://github.com/ysBach/astroimred/blob/fb70cae872406f907175e3b47d497ffe14b8c238/src/astroimred/imutil/pixels.py#L114)).
 This is deliberately different from independently filling
 each bad pixel only along that pixel's chosen axis. Unmasked pixels are never
 written. A fully masked image is unchanged.
@@ -183,7 +184,7 @@ snapshot.
 
 Benchmarks must compare equivalent numerical results before timing.
 They must include public-call copies and validation. Speedup is workload-dependent.
-There is no fixed speedup guarantee. Native IRAF `fixpix` has not been timed.
+There is no fixed speedup guarantee. Native [IRAF `fixpix`](https://iraf.readthedocs.io/en/latest/tasks/proto/fixpix.html) has not been timed.
 Comparisons with `astroimred` are not measurements of IRAF itself.
 
 ## Implementation notes

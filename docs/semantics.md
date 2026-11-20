@@ -1,4 +1,4 @@
-# Neighborhood-statistic filtering semantics
+# Filter fundamentals
 
 This page covers median, mean, min, max, variance, and standard-deviation
 filters and their NaN-aware variants. See [convolution and Gaussian filters](convolution.md)

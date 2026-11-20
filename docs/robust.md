@@ -1,4 +1,4 @@
-# Percentiles, MAD, and sigma clipping
+# Robust statistics
 
 Choose the statistic for your task:
 
