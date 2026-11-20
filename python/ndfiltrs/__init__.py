@@ -17,6 +17,7 @@ from ._api import (
     std_filter,
     var_filter,
 )
+from ._background import MeshBackground, mesh_background
 from ._derivatives import laplace, prewitt, sobel
 from ._gaussian import (
     gaussian_filter,
@@ -79,6 +80,8 @@ __all__ = [
     "matched_filter",
     "max_filter",
     "mean_filter",
+    "MeshBackground",
+    "mesh_background",
     "median_filter",
     "min_filter",
     "mode_filter",

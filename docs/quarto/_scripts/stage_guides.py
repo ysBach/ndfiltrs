@@ -22,13 +22,15 @@ GUIDES = (
     "variable",
     "morphology",
     "fixpix",
+    "background-tutorial",
+    "background",
     "benchmarks",
 )
 GITHUB = "https://github.com/ysBach/ndfiltrs/blob/main/"
 
 
 def main() -> None:
-    """Stage guides and copy the reference image.
+    """Stage guides and copy their images to the website.
 
     Raises
     ------
@@ -40,9 +42,19 @@ def main() -> None:
     destinations = {
         REPOSITORY / "docs" / f"{name}.md": f"{name}.qmd" for name in GUIDES
     }
+    assets = SITE / "assets"
+    assets.mkdir(parents=True, exist_ok=True)
+    image_links = {}
+    for image in (REPOSITORY / "docs" / "images").glob("*.png"):
+        shutil.copyfile(image, assets / image.name)
+        image_links[image] = f"../assets/{image.name}"
+    local_links = destinations | image_links
+    config = yaml.safe_load((SITE / "_quarto.yml").read_text(encoding="utf-8"))
+    api_dir = config["quartodoc"]["dir"]
+    published_api = config["website"]["site-url"].rstrip("/") + f"/{api_dir}/"
     output = SITE / "guides"
     output.mkdir(parents=True, exist_ok=True)
-    for source, destination in destinations.items():
+    for number, (source, destination) in enumerate(destinations.items(), start=1):
         heading, body = source.read_text(encoding="utf-8").split("\n", 1)
         if not heading.startswith("# "):
             raise ValueError(f"Expected one leading H1 title in {source}")
@@ -51,13 +63,17 @@ def main() -> None:
             """Resolve each local Markdown link against its canonical source."""
             target = match.group(1)
             parsed = urlsplit(target)
+            if target.startswith(published_api) and parsed.path.endswith(".html"):
+                filename = Path(parsed.path).with_suffix(".qmd").name
+                fragment = f"#{parsed.fragment}" if parsed.fragment else ""
+                return f"](../{api_dir}/{filename}{fragment})"
             if parsed.scheme or parsed.netloc or not parsed.path:
                 return match.group(0)
             linked = (source.parent / parsed.path).resolve()
             relative = linked.relative_to(REPOSITORY)
             if not linked.is_file():
                 raise FileNotFoundError(f"Missing link target in {source}: {target}")
-            rewritten = destinations.get(linked, GITHUB + relative.as_posix())
+            rewritten = local_links.get(linked, GITHUB + relative.as_posix())
             if parsed.query:
                 rewritten += "?" + parsed.query
             if parsed.fragment:
@@ -65,17 +81,11 @@ def main() -> None:
             return "](" + rewritten + ")"
 
         body = re.sub(r"\]\(([^)]+)\)", rewrite_link, body)
-        title = json.dumps(heading[2:])
+        title = json.dumps(f"{number:02d}. {heading[2:]}")
         (output / destination).write_text(
             f"---\ntitle: {title}\n---\n{body}",
             encoding="utf-8",
         )
-
-    assets = SITE / "assets"
-    assets.mkdir(parents=True, exist_ok=True)
-    shutil.copyfile(
-        REPOSITORY / "docs" / "images" / "gold-v1.png", assets / "gold-v1.png"
-    )
 
 
 def stage_navigation() -> None:

@@ -213,3 +213,18 @@ The public-call timings exclude image generation and format conversion.
 
 The generated gold-v1 report records both truth-layer errors and unresolved
 counts. It is not a pass/fail reference for future algorithms.
+
+## Compare mesh background with sep and photutils
+
+`benchmark_background` checks `mesh_background` against sep and photutils on
+2048 and 4096 square float32 and float64 images, then times complete calls
+that return both the background and RMS maps. The check fails before timing
+when a difference exceeds the tolerances in
+[the guide](../docs/background.md#parity). sep and photutils are not project
+dependencies. `uv run --with` installs them in a temporary environment:
+
+```bash
+uv run --frozen maturin develop --release --locked
+RAYON_NUM_THREADS=1 uv run --frozen --with sep --with photutils python -m benchmarks.benchmark_background --repeats 7 --output /tmp/background-threads1.json
+uv run --frozen --with sep --with photutils python -m benchmarks.benchmark_background --repeats 7 --output /tmp/background-threadsall.json
+```

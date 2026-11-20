@@ -132,6 +132,11 @@ quartodoc:
       desc: Replace only masked pixels; keep unmasked samples unchanged.
       contents:
         - fixpix
+    - title: Background estimation
+      desc: Mesh (grid) background and RMS maps, as SExtractor, sep, and photutils.
+      contents:
+        - mesh_background
+        - MeshBackground
     - title: Parallel execution
       contents:
         - get_num_threads

@@ -1,4 +1,4 @@
-# Benchmarks
+# Filter benchmarks
 
 `sortnet` is faster than SciPy for most of the measured median filters, but
 Astro-SCRAPPY is much faster for 3×3 medians. Exact `boxcar` means are slower
@@ -229,3 +229,63 @@ See [pixel-repair timings](fixpix.md) for `fixpix`, and the
 [benchmark instructions](../benchmarks/README.md) to reproduce the runs.
 Generated JSON reports stay local. They contain raw samples, validation
 errors, source hashes, and environment details.
+
+## Mesh background
+
+The independent Rust interpolator was timed on 20 November 2026 on macOS
+ARM64 with Rust 1.84.0, a release build, 64×64 meshes and 2048×2048 images.
+Times are median milliseconds for seven complete calls after one warmup,
+including estimation and production of both full-resolution maps.
+
+| Input | Natural spline, 1 worker | Natural spline, 14 workers | sep-compatible, 1 worker | sep-compatible, 14 workers | sep 1.4.1 |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| float32 | 83.0 | 9.5 | 79.3 | 9.6 | 49.5–50.4 |
+| float64 | 84.7 | 10.3 | 83.4 | 10.1 | 51.0–51.7 |
+
+The sep column gives its two single-thread medians measured alongside the
+two ndfiltrs worker counts. The input generator and pre-timing numerical
+checks are in [the benchmark](../benchmarks/benchmark_background.py).
+
+### Earlier measurements
+
+These measurements used the previous 2-D sep-compatible interpolator.
+With one worker, `mesh_background` was about 1.5× slower than sep and about
+4× faster than photutils. With 14 workers it was about 4× faster than sep.
+
+Times are median wall times in milliseconds over 7 calls, after one warmup.
+Each call returns both full-resolution maps: `mesh_background`, sep
+`Background` plus `back()` and `rms()`, and photutils `Background2D` plus
+`background` and `background_rms`. Inputs are square images of sky plus
+gradient, Gaussian noise σ = 5, and 2000 point sources. Meshes are 64×64 and
+the median filter is 3×3.
+
+| Input | ndfiltrs, 1 worker | ndfiltrs, 14 workers | sep | photutils, 1 thread | photutils, 14 threads |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| 2048², float32 | 85 | 12 | 55 | 340 | 69 |
+| 2048², float64 | 86 | 12 | 56 | 380 | 79 |
+| 4096², float32 | 340 | 52 | 220 | 1300 | 220 |
+| 4096², float64 | 360 | 52 | 230 | 1500 | 300 |
+
+The ndfiltrs columns use `interpolation="sextractor"`. The
+photutils rule set (`estimator="sigma_clip"`, IDW fill, truncated filter) takes
+5–25% less time. sep is single-threaded.
+
+Before timing, the script checks agreement on every input:
+
+- sep: full maps differ by at most 0.047 (background) and 0.024 (RMS). The
+  limit is 0.051, about 4 histogram bins of sep (see
+  [the guide](background.md#parity)).
+- photutils: mesh background and RMS agree to 1.1e-14 relative for float64
+  and 9.4e-8 for float32, where photutils rounds meshes to float32. Full maps
+  differ by at most 0.27 because the interpolators differ.
+
+A single-worker probe of the Rust estimate step on a 4096² image (without
+the Python call and maps) took about 250 ms. Copying and sorting the
+samples of each mesh took about 160 ms of that. The sort gives exact sample
+statistics. sep fills a histogram in one pass instead.
+
+These measurements are from 12 November 2026 on macOS 26.6 ARM64 (14 cores),
+Python 3.13.11, NumPy 2.5.2, sep 1.4.1, and photutils 3.1.1. Other build
+processes ran at the same time (load average 8 to 13), so the timings are
+noisy. Repeat them on an idle machine before you rely on small ratios. See
+[the benchmark instructions](../benchmarks/README.md) to reproduce the runs.

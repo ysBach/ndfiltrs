@@ -83,6 +83,10 @@ Edit the source files for each part of the site:
 - Navigation: `docs/quarto/_quarto.yml`.
 
 The build generates the guide and API pages. Do not edit those generated files.
+Use inline code for API names in prose. The site links documented names in
+prose and Python examples to their API pages. The Guides menu numbers pages in
+the order listed in `docs/quarto/_scripts/stage_guides.py`. Use the same
+numbered titles in the Guides index.
 The site build does not execute examples.
 
 The [docs workflow](.github/workflows/docs.yml) checks pull requests and
@@ -304,6 +308,23 @@ Its rounding differs in the last bits.
 Finite hot or dead pixels still contribute.
 It is a full-image filter, not a masked-pixel repair method.
 
+## Mesh background
+
+```python
+result = nf.mesh_background(image, 64, mask=mask)  # SExtractor rules
+sky = image - result.background
+snr = sky / result.rms
+```
+
+[`mesh_background`](https://ysbach.github.io/ndfiltrs/api/mesh_background.html)
+replaces the BACK step of SExtractor, [`sep.Background`](https://sep.readthedocs.io/en/stable/api/sep.Background.html),
+and Photutils [`Background2D`](https://photutils.readthedocs.io/en/stable/api/photutils.background.Background2D.html)
+for N-D data with NaNs and masks. Each stage can
+follow SExtractor or photutils. See [mesh background](docs/background.md) for
+the definitions, the differences from each reference, and parity results.
+For a worked example with a known sky, see the
+[2-D background tutorial](docs/background-tutorial.md).
+
 ## Release status
 
 Performance depends on the operation, window, array layout, and thread count.
@@ -331,8 +352,9 @@ The `ndfiltrs` crate exposes the same kernels on C-ordered `f32`/`f64`
 slices: window statistics (`WindowFilter`), robust statistics including
 percentiles and sigma clipping (`RobustFilter`), convolution
 (`Convolution`, `separable_smooth`), per-pixel window means
-(`variable_mean`, `VariableWindow`), and mask-directed repair
-(`fixpix_linear`, `fixpix_median`, `fixpix_mean`). Gaussian, derivative,
+(`variable_mean`, `VariableWindow`), mask-directed repair
+(`fixpix_linear`, `fixpix_median`, `fixpix_mean`), and mesh background
+maps (`MeshBackground`). Gaussian, derivative,
 and morphology helpers remain Python-level compositions of these kernels.
 
 ```rust

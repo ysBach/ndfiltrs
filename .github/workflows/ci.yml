@@ -32,9 +32,9 @@ jobs:
           components: rustfmt, clippy
       - uses: astral-sh/setup-uv@v6
       - run: uv sync --frozen --extra dev
-      - name: Install optional Astropy reference on one test job
+      - name: Install Astropy and sep references on one test job
         if: matrix.os == 'ubuntu-latest' && matrix.python-version == '3.13'
-        run: uv pip install --python .venv/bin/python astropy
+        run: uv pip install --python .venv/bin/python --only-binary sep astropy "sep==1.4.1"
       - run: cargo fetch --locked
       - run: uv run --frozen python scripts/update_rust_notices.py --check
       - run: >-

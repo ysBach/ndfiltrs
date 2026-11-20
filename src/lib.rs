@@ -13,6 +13,7 @@
 //! - Per-pixel window sizes: [`variable_mean`] with [`VariableWindow`].
 //! - Noise propagation: [`Convolution::apply_with_variance`],
 //!   [`MatchedFilter`].
+//! - Mesh background and RMS maps: [`MeshBackground`].
 //! - Mask-directed repair: [`fixpix_linear`], [`fixpix_median`],
 //!   [`fixpix_mean`].
 //!
@@ -45,6 +46,7 @@
 //! - `benchmark`, `test-hooks`: internal, unstable, and excluded from the
 //!   semver contract.
 
+mod background;
 mod boundary;
 mod boxcar;
 mod convolution;
@@ -71,6 +73,10 @@ mod variable;
 mod variance;
 mod window;
 
+pub use background::{
+    MeshBackground, MeshConfig, MeshEstimator, MeshFill, MeshFilterEdge, MeshGrid,
+    MeshInterpolation, MeshRms, MeshThreshold, MeshValidBase, MeshValidCount,
+};
 pub use boundary::BoundaryMode;
 pub use convolution::WeightPolicy;
 pub use error::Error;

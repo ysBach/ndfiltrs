@@ -380,6 +380,9 @@ Its [BSD 3-Clause notice](../python/ndfiltrs/licenses/astroimred-BSD-3-Clause.tx
 is bundled with `ndfiltrs`. The repair implementation is native Rust.
 Astroimred is only an optional comparison dependency.
 
+The [mesh background guide](background.md#interpolation-references) describes
+the numerical references for the natural spline and the 2-D sep-compatible mode.
+
 The bundled [reducers MIT notice](../python/ndfiltrs/licenses/reducers-MIT.txt) comes from
 [revision 7625507](https://github.com/ysBach/reducers/commit/7625507ac1ff4101c3f97348c0a79a7d07e6ab5e) and the
 [authoritative LICENSE](https://raw.githubusercontent.com/ysbach/reducers/7625507ac1ff4101c3f97348c0a79a7d07e6ab5e/LICENSE).
