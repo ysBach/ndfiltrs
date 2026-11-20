@@ -115,4 +115,4 @@ __all__ = [
     "variable_mean_filter",
     "white_tophat",
 ]
-__version__ = "0.1.0"
+__version__ = "0.2.0"

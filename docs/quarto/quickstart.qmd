@@ -5,12 +5,14 @@ title: "Quickstart"
 Filter a small array in four steps. These examples explain
 [numerical behavior](guides/semantics.qmd) without external data.
 
-## 1. Install the source build
+## 1. Install ndfiltrs
 
-The first PyPI release is not yet available. Follow the current
-[source-build instructions](https://github.com/ysBach/ndfiltrs#source-build),
-including their Rust dependency requirements. The examples require a built
-`ndfiltrs` extension and NumPy.
+```sh
+python -m pip install ndfiltrs
+```
+
+To build from a checkout, follow the
+[source-build instructions](https://github.com/ysBach/ndfiltrs#source-build).
 
 ## 2. Decide how missing samples count
 

@@ -115,9 +115,9 @@ release convention.
 4. Tag exactly the successfully rehearsed commit. For the first release:
 
    ```sh
-   uv run --no-sync python scripts/check_release.py --tag v0.1.0 --require-clean
-   git tag -a v0.1.0 -m "Release 0.1.0"
-   git push origin v0.1.0
+   uv run --no-sync python scripts/check_release.py --tag v0.2.0 --require-clean
+   git tag -a v0.2.0 -m "Release 0.2.0"
+   git push origin v0.2.0
    ```
 
    **Pushing the tag publishes** to PyPI and crates.io. A plain `git push`
@@ -126,8 +126,8 @@ release convention.
 
    ```sh
    uv venv --no-project /tmp/ndfiltrs-pypi-check --python 3.13
-   uv pip install --python /tmp/ndfiltrs-pypi-check/bin/python --index-url https://pypi.org/simple ndfiltrs==0.1.0
-   EXPECTED_VERSION=0.1.0 /tmp/ndfiltrs-pypi-check/bin/python -I scripts/smoke_install.py
+   uv pip install --python /tmp/ndfiltrs-pypi-check/bin/python --index-url https://pypi.org/simple ndfiltrs==0.2.0
+   EXPECTED_VERSION=0.2.0 /tmp/ndfiltrs-pypi-check/bin/python -I scripts/smoke_install.py
    ```
 
    These paths are for macOS/Linux. Windows uses the environment's

@@ -1,9 +1,12 @@
 # Changelog
 
-## 0.1.0 - Unreleased
+## 0.2.0 - 2026-11-20
 
-First release of `ndfiltrs`: N-dimensional neighborhood filters for
-NumPy, implemented in Rust.
+First public release of `ndfiltrs`, which implements N-dimensional
+NumPy filters in Rust. It includes the public Rust API, sliding-histogram
+median and rank filters, masked Savitzky-Golay filters, per-pixel window
+means, convolution with variance propagation, matched filtering, and mesh
+background estimation.
 
 ### License
 
@@ -11,8 +14,8 @@ NumPy, implemented in Rust.
 
 ### Rust API
 
-- The crate is published on crates.io. Plans validate geometry and
-  parameters once per array shape, then filter any number of C-ordered `f32`
+- Plans validate geometry and parameters once per array shape, then filter
+  any number of C-ordered `f32`
   or `f64` buffers:
   - `WindowFilter` / `window_filter`: median, mean, min, max, var, std, rank.
     The Python window filters use the same plans.
@@ -125,8 +128,7 @@ NumPy, implemented in Rust.
   operation-specific speedups or slowdowns.
 - Independent numerical references cover boundary geometry, nonfinite samples,
   precision, and input preservation. CI also compares sampled kernels with Astropy.
-- MIT license. Bundled license notices cover the Rust dependencies and
-  `astroimred`.
+- Bundled license notices cover the Rust dependencies and `astroimred`.
 - `cp310-abi3` wheels support Python 3.10+ on Linux (x86-64, ARM64),
   macOS (x86-64, ARM64), and Windows (x86-64). Linux requires glibc 2.28+.
   All platforms require NumPy 1.24+.

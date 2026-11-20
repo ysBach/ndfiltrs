@@ -4,8 +4,9 @@
 pure-Rust median-selection kernel from [reducers](https://github.com/ysBach/reducers),
 without requiring its Python package at runtime.
 
-Version 0.1.0 provides N-dimensional neighborhood statistics, arbitrary-kernel
-convolution, Gaussian filters, and masked-pixel repair.
+Version 0.2.0 provides N-dimensional neighborhood statistics, arbitrary-kernel
+convolution with variance propagation, matched filtering, Gaussian and
+Savitzky-Golay filters, masked-pixel repair, and mesh background estimation.
 Inputs must be aligned, native-endian NumPy `float32` or `float64` arrays.
 The filters reject unaligned arrays.
 
@@ -13,10 +14,13 @@ Read the [online documentation](https://ysbach.github.io/ndfiltrs/) for the
 quickstart, API reference, numerical guides, and benchmarks.
 It follows `main` and may include changes not yet released on PyPI.
 
-## Source build
+## Installation
 
-The first PyPI release is not yet available. See [RELEASING.md](RELEASING.md)
-for the publishing procedure.
+```sh
+python -m pip install ndfiltrs
+```
+
+## Source build
 
 Install a Rust 1.84+ toolchain. Run these commands from the repository root.
 They use the project's `.venv`:
