@@ -194,7 +194,8 @@ def test_matched_filter_recovers_point_source(dtype: type[np.floating]) -> None:
     image[6:15, 6:15] = 7.5 * template
     variance = np.linspace(0.5, 2.0, image.size).reshape(image.shape).astype(dtype)
     result = nf.matched_filter(image, variance, template)
-    assert result.amplitude[10, 10] == pytest.approx(7.5, rel=10 * np.finfo(dtype).eps)
+    tolerance = 10 * float(np.finfo(dtype).eps)
+    assert result.amplitude[10, 10] == pytest.approx(7.5, rel=tolerance)
     assert np.argmax(result.snr) == np.ravel_multi_index((10, 10), image.shape)
 
 
